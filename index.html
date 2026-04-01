@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AntPro — Конструктор карусели</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AntPro">
+  <meta name="theme-color" content="#141d2e">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=Montserrat:ital,wght@0,400;0,600;0,700;0,800;0,900;1,400;1,700&family=Roboto:ital,wght@0,400;0,700;1,400&family=Open+Sans:wght@400;600;700&family=Playfair+Display:ital,wght@0,700;1,700&family=Oswald:wght@400;500;700&family=Raleway:wght@400;700;800;900&family=PT+Sans:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;600;700;800&family=Nunito:wght@400;700;800;900&family=Unbounded:wght@400;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+
+    /* ── BRAND PALETTE (ea-brmed.ru) ── */
+    :root {
+      --navy:   #141d2e;   /* основной фон */
+      --surf:   #1c2640;   /* панели */
+      --card:   #222d4a;   /* карточки/поля */
+      --brd:    #2c3a58;   /* бордеры */
+      --brd2:   #3a4d70;   /* активные бордеры */
+      --txt:    #e8edf5;   /* основной текст */
+      --mut:    #7e92b8;   /* вторичный текст */
+      --dim:    #4a5d80;   /* очень тихий */
+      --accent: #5abf7c;   /* зелёный акцент */
+      --acc2:   #3da862;   /* тёмно-зелёный */
+      --red:    #e05252;   /* ошибки */
+    }
+
+    body { font-family:'Montserrat',sans-serif; background:var(--navy); color:var(--txt); height:100vh; overflow:hidden; display:flex; flex-direction:column; }
+
+    /* ── TOP BAR ── */
+    .topbar {
+      display:flex; align-items:center; gap:8px; padding:0 18px;
+      background:var(--surf);
+      border-bottom:1px solid var(--brd);
+      flex-shrink:0; height:52px;
+      box-shadow:0 2px 16px rgba(0,0,0,.35);
+    }
+    .tb-logo {
+      display:flex; align-items:center; gap:8px; margin-right:auto; text-decoration:none;
+    }
+    .tb-logo-fox {
+      width:32px; height:32px;
+      background:var(--card); border-radius:50%; border:1.5px solid var(--brd2);
+      display:flex; align-items:center; justify-content:center; font-size:16px;
+      flex-shrink:0;
+    }
+    .tb-logo-text { font-size:13px; font-weight:800; color:var(--txt); letter-spacing:.3px; line-height:1.1; }
+    .tb-logo-text small { display:block; font-size:9px; font-weight:500; color:var(--mut); letter-spacing:.5px; text-transform:uppercase; }
+    .slide-ctr { font-size:11px; color:var(--mut); background:var(--card); padding:4px 10px; border-radius:20px; border:1px solid var(--brd); }
+
+    .btn {
+      padding:6px 14px; border-radius:8px; border:none; cursor:pointer;
+      font-family:inherit; font-size:11px; font-weight:700; transition:all .15s; white-space:nowrap;
+    }
+    .btn-a { background:var(--accent); color:#0e1a12; }
+    .btn-a:hover { background:#6dd48e; }
+    .btn-g { background:var(--card); color:var(--mut); border:1px solid var(--brd); }
+    .btn-g:hover { background:var(--brd); color:var(--txt); }
+    .btn-icon { background:var(--card); border:1px solid var(--brd); border-radius:8px; padding:6px 10px; color:var(--mut); cursor:pointer; font-size:16px; line-height:1; transition:all .15s; }
+    .btn-icon:hover { background:var(--brd); color:var(--txt); }
+
+    /* ── WORKSPACE ── */
+    .workspace { display:flex; flex:1; overflow:hidden; }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width:276px; background:var(--surf); border-right:1px solid var(--brd);
+      display:flex; flex-direction:column; flex-shrink:0;
+    }
+    .stabs { display:flex; border-bottom:1px solid var(--brd); background:var(--navy); }
+    .stab {
+      flex:1; padding:10px 2px; background:none; border:none; color:var(--mut);
+      cursor:pointer; font-size:9px; font-family:inherit; font-weight:700;
+      text-align:center; border-bottom:2px solid transparent;
+      transition:all .15s; letter-spacing:.4px; text-transform:uppercase;
+    }
+    .stab.on { color:var(--accent); border-bottom-color:var(--accent); }
+    .stab:hover:not(.on) { color:var(--txt); }
+    .sbody { flex:1; overflow-y:auto; padding:12px; }
+    .sbody::-webkit-scrollbar { width:3px; }
+    .sbody::-webkit-scrollbar-track { background:transparent; }
+    .sbody::-webkit-scrollbar-thumb { background:var(--brd); border-radius:2px; }
+
+    .panel { display:none; }
+    .panel.on { display:block; }
+
+    /* ── SECTION HEADER ── */
+    .sec {
+      font-size:9px; font-weight:800; color:var(--mut);
+      text-transform:uppercase; letter-spacing:.8px; margin:14px 0 7px;
+      display:flex; align-items:center; gap:6px;
+    }
+    .sec:first-child { margin-top:0; }
+    .sec::after { content:''; flex:1; height:1px; background:var(--brd); }
+
+    /* ── INPUTS ── */
+    .row { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+    .rlbl { font-size:10px; color:var(--mut); width:52px; flex-shrink:0; }
+    .ifield {
+      flex:1; background:var(--card); border:1px solid var(--brd);
+      border-radius:7px; padding:6px 9px; color:var(--txt);
+      font-size:11px; font-family:inherit; outline:none; transition:border .15s;
+    }
+    .ifield:focus { border-color:var(--accent); }
+    select.ifield { cursor:pointer; }
+    input[type="color"].cc {
+      padding:2px; height:30px; width:38px; flex:none;
+      border:1px solid var(--brd); border-radius:7px;
+      background:var(--card); cursor:pointer;
+    }
+    input[type="range"] { flex:1; accent-color:var(--accent); cursor:pointer; height:3px; }
+    .rval { font-size:10px; color:var(--mut); width:32px; text-align:right; flex-shrink:0; }
+
+    /* ── PALETTE ── */
+    .palette { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:9px; }
+    .sw {
+      width:24px; height:24px; border-radius:6px; cursor:pointer;
+      border:2px solid transparent; transition:all .12s; flex-shrink:0;
+    }
+    .sw:hover,.sw.sel { border-color:#fff; transform:scale(1.18); }
+    .sw.sw-white { border-color:var(--brd); }
+    .sw.sw-white:hover,.sw.sw-white.sel { border-color:var(--txt); }
+
+    /* ── GRADIENT GRID ── */
+    .grad-section { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-bottom:9px; }
+    .gsw { height:34px; border-radius:8px; cursor:pointer; border:2px solid transparent; transition:all .12s; }
+    .gsw:hover,.gsw.sel { border-color:#fff; transform:scale(1.04); }
+
+    /* ── CUSTOM GRADIENT ── */
+    .grad-builder {
+      background:var(--card); border:1px solid var(--brd);
+      border-radius:10px; padding:11px; margin-bottom:9px;
+    }
+    .grad-preview { height:38px; border-radius:7px; margin-bottom:9px; border:1px solid var(--brd); }
+    .grad-row { display:flex; gap:6px; align-items:center; margin-bottom:6px; }
+
+    /* ── BUTTONS ── */
+    .add-btn {
+      width:100%; padding:8px 11px; background:var(--card);
+      border:1px dashed var(--brd2); border-radius:8px; color:var(--mut);
+      cursor:pointer; font-family:inherit; font-size:11px; margin-bottom:6px;
+      transition:all .15s; display:flex; align-items:center; gap:8px;
+    }
+    .add-btn:hover { background:var(--brd); border-color:var(--accent); color:var(--accent); }
+    .add-btn .icon { font-size:14px; flex-shrink:0; }
+
+    .presets-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-bottom:9px; }
+    .preset-btn {
+      padding:8px 6px; background:var(--card); border:1px solid var(--brd);
+      border-radius:8px; color:var(--txt); cursor:pointer; font-family:inherit;
+      font-size:10px; font-weight:700; transition:all .15s; text-align:center; line-height:1.35;
+    }
+    .preset-btn:hover { background:var(--brd); border-color:var(--accent); color:var(--accent); }
+
+    /* ── FORMAT BAR ── */
+    .fbar { display:flex; gap:3px; flex-wrap:wrap; margin-bottom:8px; }
+    .fbtn {
+      padding:5px 9px; background:var(--card); border:1px solid var(--brd);
+      border-radius:6px; color:var(--mut); cursor:pointer; font-size:11px;
+      font-weight:700; font-family:inherit; transition:all .12s;
+    }
+    .fbtn:hover { background:var(--brd); color:var(--txt); }
+    .fbtn.on { background:var(--accent); border-color:var(--acc2); color:#0e1a12; }
+
+    /* ── TOPBAR FORMAT PILLS ── */
+    .fmt-bar { display:flex; gap:3px; margin-right:6px; }
+    .fmt-btn {
+      padding:4px 8px; background:var(--card); border:1px solid var(--brd);
+      border-radius:6px; color:var(--mut); cursor:pointer; font-size:10px;
+      font-weight:700; font-family:inherit; transition:all .12s; white-space:nowrap;
+      display:flex; flex-direction:column; align-items:center; line-height:1.1;
+    }
+    .fmt-btn:hover { background:var(--brd); color:var(--txt); }
+    .fmt-btn.on { background:var(--accent); border-color:var(--acc2); color:#0e1a12; }
+    .fmt-btn small { font-size:7px; opacity:.8; font-weight:500; }
+
+    /* ── TOLERANCE ROW ── */
+    .tol-row { display:flex; align-items:center; gap:6px; margin-top:8px; }
+
+    /* ── EMOJI ── */
+    .emoji-grid { display:grid; grid-template-columns:repeat(8,1fr); gap:3px; }
+    .ebtn {
+      padding:4px; background:var(--card); border:1px solid var(--brd);
+      border-radius:5px; font-size:16px; cursor:pointer; text-align:center; transition:all .12s;
+    }
+    .ebtn:hover { background:var(--brd); transform:scale(1.15); }
+
+    /* ── UPLOAD ZONE ── */
+    /* ── FILE INPUT HIDE ── */
+    .upzone input[type="file"] { display:none; }
+
+    .upzone {
+      border:2px dashed var(--brd2); border-radius:10px; padding:16px;
+      text-align:center; cursor:pointer; transition:all .15s; margin-bottom:8px;
+      background:var(--card);
+    }
+    .upzone:hover { border-color:var(--accent); background:rgba(90,191,124,.06); }
+    .upzone .uz { font-size:24px; }
+    .upzone p { color:var(--mut); font-size:10px; margin-top:5px; line-height:1.5; }
+
+    /* ── CANVA-STYLE SIDEBAR ── */
+    .sidebar { display:flex; width:316px; flex-shrink:0; }
+
+    /* Icon strip (left, like Canva) */
+    .icon-strip {
+      width:68px; background:var(--navy); border-right:1px solid var(--brd);
+      display:flex; flex-direction:column; align-items:center;
+      padding:8px 0; gap:2px; flex-shrink:0;
+    }
+    .ic-btn {
+      width:60px; padding:9px 4px 7px; display:flex; flex-direction:column;
+      align-items:center; gap:3px; border:none; background:transparent;
+      cursor:pointer; color:var(--mut); border-radius:10px; transition:all .15s;
+      font-family:inherit;
+    }
+    .ic-btn .ico { font-size:22px; line-height:1; }
+    .ic-btn .lbl { font-size:8px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; line-height:1; }
+    .ic-btn:hover { color:var(--txt); background:var(--surf); }
+    .ic-btn.on { color:var(--accent); background:rgba(90,191,124,.12); }
+
+    /* Content panel (right of icon strip) */
+    .content-panel { flex:1; background:var(--surf); display:flex; flex-direction:column; overflow:hidden; }
+    .cpanel-head { padding:10px 12px 8px; border-bottom:1px solid var(--brd); flex-shrink:0; }
+    .cpanel-title { font-size:11px; font-weight:800; color:var(--txt); letter-spacing:.3px; text-transform:uppercase; }
+    .sbody { flex:1; overflow-y:auto; padding:12px; }
+    .sbody::-webkit-scrollbar { width:3px; }
+    .sbody::-webkit-scrollbar-thumb { background:var(--brd); border-radius:2px; }
+
+    /* Element cards (like Canva) */
+    .el-card-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:10px; }
+    .el-card {
+      background:var(--card); border:1px solid var(--brd); border-radius:10px;
+      padding:12px 8px 10px; cursor:pointer; transition:all .15s; text-align:center;
+      font-family:inherit; color:var(--txt);
+    }
+    .el-card:hover { background:var(--brd); border-color:var(--brd2); transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.3); }
+    .el-card .ec-ico { font-size:24px; margin-bottom:5px; display:block; }
+    .el-card .ec-lbl { font-size:9px; font-weight:700; color:var(--mut); letter-spacing:.3px; text-transform:uppercase; }
+
+    /* Text preset buttons (Canva style) */
+    .txt-preset {
+      width:100%; padding:10px 12px; background:var(--card); border:1px solid var(--brd);
+      border-radius:10px; cursor:pointer; font-family:inherit; color:var(--txt);
+      text-align:left; margin-bottom:6px; transition:all .15s; display:flex; align-items:center; gap:10px;
+    }
+    .txt-preset:hover { background:var(--brd); border-color:var(--brd2); }
+    .txt-preset .tp-sample { font-weight:800; font-size:15px; line-height:1; flex-shrink:0; }
+    .txt-preset .tp-info { display:flex; flex-direction:column; gap:2px; }
+    .txt-preset .tp-name { font-size:11px; font-weight:700; }
+    .txt-preset .tp-sub { font-size:9px; color:var(--mut); }
+
+    /* ── TOGGLE ── */
+    .tog-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    .tog-lbl { font-size:11px; color:var(--txt); }
+    .tog { width:34px; height:18px; background:var(--brd); border-radius:9px; position:relative; cursor:pointer; transition:background .2s; flex-shrink:0; }
+    .tog.on { background:var(--accent); }
+    .tog::after { content:''; position:absolute; width:14px; height:14px; background:#fff; border-radius:50%; top:2px; left:2px; transition:left .2s; box-shadow:0 1px 4px rgba(0,0,0,.3); }
+    .tog.on::after { left:18px; }
+
+    /* ── LAYER BUTTONS ── */
+    .lrow { display:flex; gap:3px; margin-bottom:8px; }
+    .lrow button {
+      flex:1; padding:5px; background:var(--card); border:1px solid var(--brd);
+      border-radius:6px; color:var(--mut); cursor:pointer; font-size:10px;
+      font-family:inherit; transition:all .12s;
+    }
+    .lrow button:hover { background:var(--brd); color:var(--txt); }
+
+    hr.div { border:none; border-top:1px solid var(--brd); margin:11px 0; }
+    .no-el { text-align:center; color:var(--dim); padding:28px 10px; font-size:11px; line-height:1.6; }
+
+    /* ── EDITOR ── */
+    .editor-area {
+      flex:1; display:flex; align-items:center; justify-content:center;
+      background:var(--navy);
+      background-image: radial-gradient(ellipse at center, #1c2640 0%, #0f1520 100%);
+      overflow:hidden;
+    }
+    .slide-canvas {
+      position:relative; overflow:hidden;
+      -webkit-user-select:none; user-select:none;
+      width:432px; height:540px;
+      border-radius:4px;
+      box-shadow:0 24px 80px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.05);
+      flex-shrink:0; transition:width .2s, height .2s;
+    }
+
+    /* ── BG REMOVAL ── */
+    .rmbg-box { background:var(--card); border:1px solid var(--brd); border-radius:10px; padding:12px; margin-bottom:8px; }
+    .rmbg-progress { height:4px; background:var(--brd); border-radius:2px; margin:8px 0 5px; overflow:hidden; display:none; }
+    .rmbg-bar { height:100%; width:0; background:linear-gradient(90deg,var(--accent),#3da862); border-radius:2px; transition:width .3s; }
+    .rmbg-status { font-size:10px; color:var(--mut); margin-bottom:7px; min-height:14px; }
+    .btn-rmbg {
+      width:100%; padding:9px; background:linear-gradient(135deg,#1a7a3d,#0d4020);
+      border:none; border-radius:8px; color:#fff; cursor:pointer;
+      font-family:inherit; font-size:11px; font-weight:700; transition:all .15s;
+      display:flex; align-items:center; justify-content:center; gap:6px;
+    }
+    .btn-rmbg:hover { background:linear-gradient(135deg,#22c55e,#15803d); }
+    .btn-rmbg:disabled { opacity:.45; cursor:not-allowed; }
+    .rmbg-safari-hint { display:none; background:#1a2236; border:1px solid #f5a62355; border-radius:10px; padding:12px; margin-top:6px; }
+    .rmbg-safari-hint p { font-size:11px; line-height:1.6; }
+    .rmbg-safari-hint .hint-title { color:#f5a623; font-weight:700; margin-bottom:6px; }
+    .rmbg-safari-hint .hint-body { color:#a0b0cc; margin-bottom:6px; }
+    .rmbg-safari-hint .hint-body strong { color:var(--txt); }
+    .rmbg-safari-hint .hint-path { font-size:10px; color:var(--mut); }
+    .rmbg-safari-hint .hint-path code { color:var(--accent); }
+    .rmbg-note { font-size:10px; color:var(--mut); line-height:1.5; margin-top:6px; }
+    .preset-orange { color:#f5a623; }
+    .preset-green  { color:#4ade80; }
+    .preset-blue   { color:#60a5fa; }
+
+    /* ── ELEMENTS ON CANVAS ── */
+    .el { position:absolute; cursor:move; z-index:2; }
+    .el.sel { outline:2px solid var(--accent); outline-offset:0; }
+    .el-ctrl { position:absolute; top:-28px; right:0; display:none; gap:2px; z-index:100; }
+    .el.sel .el-ctrl { display:flex; }
+    .ecb {
+      width:24px; height:24px; background:var(--surf); border:1px solid var(--brd2);
+      border-radius:5px; color:var(--txt); font-size:10px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .1s;
+    }
+    .ecb:hover { background:var(--brd); }
+    .ecb.del:hover { background:#c0392b; border-color:#c0392b; }
+    .rh { position:absolute; width:9px; height:9px; background:var(--accent); border:2px solid var(--navy); border-radius:2px; z-index:10; }
+    .rh-se { bottom:-5px; right:-5px; cursor:se-resize; }
+    .rh-sw { bottom:-5px; left:-5px; cursor:sw-resize; }
+    .rh-ne { top:-5px; right:-5px; cursor:ne-resize; }
+    .rh-nw { top:-5px; left:-5px; cursor:nw-resize; }
+    .text-el { outline:none; min-width:40px; min-height:20px; white-space:pre-wrap; word-break:break-word; }
+    .img-wrap { width:100%; height:100%; overflow:hidden; }
+    .img-wrap.circle { border-radius:50%; }
+    .img-wrap img { width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
+
+    /* ── SLIDES STRIP ── */
+    .strip {
+      height:122px; background:var(--navy);
+      border-top:1px solid var(--brd);
+      display:flex; align-items:center; gap:8px; padding:8px 16px;
+      overflow-x:auto; flex-shrink:0;
+    }
+    .strip::-webkit-scrollbar { height:3px; }
+    .strip::-webkit-scrollbar-thumb { background:var(--brd); border-radius:2px; }
+    .sth {
+      position:relative; flex-shrink:0; width:66px; height:82px;
+      border-radius:8px; overflow:hidden; cursor:pointer;
+      border:2px solid var(--brd); transition:all .12s;
+    }
+    .sth.on { border-color:var(--accent); box-shadow:0 0 0 1px var(--acc2); }
+    .sth:hover { border-color:var(--brd2); }
+    .sth-n {
+      position:absolute; bottom:3px; left:50%; transform:translateX(-50%);
+      background:rgba(0,0,0,.75); color:#fff; font-size:8px;
+      padding:1px 5px; border-radius:4px; font-weight:700; pointer-events:none;
+    }
+    .sth-del {
+      position:absolute; top:3px; right:3px; width:15px; height:15px;
+      background:rgba(192,57,43,.9); border-radius:50%; display:none;
+      align-items:center; justify-content:center; font-size:9px; color:#fff;
+      cursor:pointer; font-weight:bold; z-index:5;
+    }
+    .sth:hover .sth-del { display:flex; }
+    .add-sth {
+      flex-shrink:0; width:66px; height:82px; border:2px dashed var(--brd);
+      border-radius:8px; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; cursor:pointer;
+      color:var(--dim); font-size:20px; transition:all .12s; gap:2px;
+    }
+    .add-sth:hover { border-color:var(--accent); color:var(--accent); }
+    .add-sth span { font-size:8px; font-weight:700; letter-spacing:.5px; }
+
+    /* ── TOUCH / RESIZE HANDLES bigger on touch ── */
+    @media (pointer:coarse){
+      .rh { width:18px; height:18px; border-radius:4px; }
+      .rh-se { bottom:-9px; right:-9px; }
+      .rh-sw { bottom:-9px; left:-9px; }
+      .rh-ne { top:-9px; right:-9px; }
+      .rh-nw { top:-9px; left:-9px; }
+      .ecb { width:32px; height:32px; font-size:13px; }
+      .el-ctrl { top:-38px; gap:4px; }
+    }
+
+    /* ── TABLET (iPad) ── */
+    @media (max-width:900px){
+      .fmt-bar { display:none; }
+      .sidebar { width:260px; }
+      .icon-strip { width:54px; }
+      .ic-btn { width:46px; padding:8px 2px 6px; }
+      .ic-btn .ico { font-size:18px; }
+      .ic-btn .lbl { font-size:7px; }
+    }
+
+    /* ── MOBILE (iPhone) ── */
+    @media (max-width:600px){
+      body { overflow:auto; height:auto; }
+      .workspace { flex-direction:column; overflow:visible; }
+      .sidebar { width:100%; flex-direction:row; height:auto; border-right:none; border-bottom:1px solid var(--brd); }
+      .icon-strip { flex-direction:row; width:auto; height:48px; padding:0 8px; overflow-x:auto; gap:0; border-right:none; border-bottom:1px solid var(--brd); }
+      .content-panel { max-height:220px; overflow-y:auto; }
+      .editor-area { min-height:420px; align-items:flex-start; padding:12px; overflow:auto; }
+      .slide-canvas { transform-origin:top left; }
+      .strip { height:90px; }
+      .sth { width:52px; height:64px; }
+      .topbar { flex-wrap:wrap; height:auto; padding:8px 10px; gap:5px; }
+      .tb-logo { width:100%; }
+      .btn { font-size:10px; padding:5px 9px; }
+      .fmt-bar { display:flex; flex-wrap:wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="tb-logo">
+    <div class="tb-logo-fox">🦊</div>
+    <div class="tb-logo-text">AntPro<small>Конструктор карусели</small></div>
+  </div>
+  <div class="fmt-bar" id="fmtBar">
+    <button type="button" class="fmt-btn on" onclick="setFormat('post45')" id="fmt-post45">4:5<small>Пост</small></button>
+    <button type="button" class="fmt-btn" onclick="setFormat('post34')" id="fmt-post34">3:4<small>Пост</small></button>
+    <button type="button" class="fmt-btn" onclick="setFormat('square')" id="fmt-square">1:1<small>Квадрат</small></button>
+    <button type="button" class="fmt-btn" onclick="setFormat('story')" id="fmt-story">9:16<small>Сторис</small></button>
+    <button type="button" class="fmt-btn" onclick="setFormat('tgpost')" id="fmt-tgpost">TG<small>Пост</small></button>
+    <button type="button" class="fmt-btn" onclick="setFormat('tgwide')" id="fmt-tgwide">TG<small>Широкий</small></button>
+  </div>
+  <span class="slide-ctr" id="slideCtr">1 / 1</span>
+  <button type="button" class="btn btn-g" onclick="duplicateSlide()">⧉ Дублировать</button>
+  <button type="button" class="btn btn-g" onclick="exportCurrent()">↓ PNG</button>
+  <button type="button" class="btn btn-a" onclick="exportAll()">↓ ZIP все слайды</button>
+  <button type="button" class="btn btn-g" title="Сохранить" onclick="saveProject()">💾</button>
+  <button type="button" class="btn btn-g" title="Загрузить" onclick="loadProject()">📂</button>
+</header>
+
+<div class="workspace">
+  <aside class="sidebar">
+    <!-- CANVA-STYLE ICON STRIP -->
+    <div class="icon-strip">
+      <button class="ic-btn on" id="ic-bg" onclick="tab('bg',this)">
+        <span class="ico">🎨</span><span class="lbl">Фон</span>
+      </button>
+      <button class="ic-btn" id="ic-text" onclick="tab('text',this)">
+        <span class="ico">T</span><span class="lbl">Текст</span>
+      </button>
+      <button class="ic-btn" id="ic-photo" onclick="tab('photo',this)">
+        <span class="ico">📷</span><span class="lbl">Фото</span>
+      </button>
+      <button class="ic-btn" id="ic-el" onclick="tab('el',this)">
+        <span class="ico">✦</span><span class="lbl">Элементы</span>
+      </button>
+      <button class="ic-btn" id="ic-props" onclick="tab('props',this)">
+        <span class="ico">⚙</span><span class="lbl">Свойства</span>
+      </button>
+    </div>
+    <!-- CONTENT PANEL -->
+    <div class="content-panel">
+      <div class="cpanel-head"><div class="cpanel-title" id="cpanelTitle">Фон</div></div>
+      <div class="sbody">
+
+      <!-- ═══ BG ═══ -->
+      <div class="panel on" id="p-bg">
+        <div class="sec">Цвет фона</div>
+        <div class="palette" id="bgPalette"></div>
+        <div class="row">
+          <span class="rlbl">Свой цвет</span>
+          <input type="color" class="cc" id="bgPicker" value="#1a7a3d" oninput="setBg(this.value)">
+          <input type="text" class="ifield" id="bgHex" value="#1a7a3d" maxlength="9" oninput="setBg(this.value)">
+        </div>
+
+        <div class="sec">Готовые градиенты</div>
+        <div class="grad-section" id="gradPresets"></div>
+
+        <div class="sec">Свой градиент</div>
+        <div class="grad-builder">
+          <div class="grad-preview" id="gradPreview"></div>
+          <div class="grad-row">
+            <span class="rlbl" style="font-size:10px">Цвет 1</span>
+            <input type="color" class="cc" id="gc1" value="#1a7a3d" oninput="updateCustomGrad()">
+          </div>
+          <div class="grad-row">
+            <span class="rlbl" style="font-size:10px">Цвет 2</span>
+            <input type="color" class="cc" id="gc2" value="#0d4020" oninput="updateCustomGrad()">
+          </div>
+          <div class="grad-row">
+            <span class="rlbl" style="font-size:10px">Угол</span>
+            <input type="range" min="0" max="360" value="135" id="gradAngle" oninput="updateCustomGrad();this.nextElementSibling.textContent=this.value+'°'">
+            <span class="rval">135°</span>
+          </div>
+          <button class="add-btn" style="margin:0" onclick="applyCustomGrad()">✓ Применить градиент</button>
+        </div>
+
+        <div class="sec">Фоновое изображение</div>
+        <div class="upzone" onclick="document.getElementById('bgImgIn').click()">
+          <input type="file" id="bgImgIn" accept="image/*" onchange="setBgImg(this)">
+          <div class="uz">🖼</div>
+          <p>Нажмите для выбора<br>фонового изображения</p>
+        </div>
+        <div class="row" id="bgOpRow" style="display:none">
+          <span class="rlbl">Прозрач.</span>
+          <input type="range" min="0" max="100" value="100" id="bgOpSlider" oninput="setBgOp(this.value)">
+          <span class="rval" id="bgOpVal">100%</span>
+        </div>
+        <button class="add-btn" id="rmBgImgBtn" style="display:none;color:#f87171;border-color:#f87171" onclick="removeBgImg()">✕ Удалить фон.картинку</button>
+      </div>
+
+      <!-- ═══ TEXT ═══ -->
+      <div class="panel" id="p-text">
+        <div class="sec">Добавить текст</div>
+        <div class="presets-grid">
+          <button class="preset-btn" onclick="addTxt('Заголовок слайда',{fontSize:'26px',fontWeight:'800',color:'#f5c842',fontFamily:'Montserrat'})">📌 Заголовок</button>
+          <button class="preset-btn" onclick="addTxt('Подзаголовок',{fontSize:'15px',fontWeight:'400',color:'#ffffff',fontFamily:'Montserrat'})">📄 Подзаголовок</button>
+          <button class="preset-btn" onclick="addTxt('Основной текст',{fontSize:'16px',fontWeight:'400',color:'#ffffff',fontFamily:'Comfortaa'})">📝 Текст</button>
+          <button class="preset-btn" onclick="addTxt('Цитата или факт',{fontSize:'14px',fontWeight:'400',color:'#4ade80',fontFamily:'Comfortaa',fontStyle:'italic'})">💬 Цитата</button>
+        </div>
+        <button class="add-btn" onclick="addTxt('Введите текст')"><span class="icon">＋</span>Пустой текст</button>
+
+        <hr class="div">
+        <div class="sec">Шрифт</div>
+        <div class="row">
+          <span class="rlbl">Семейство</span>
+          <select class="ifield" id="ffam" onchange="txtProp('fontFamily',this.value)">
+            <option value="Comfortaa">Comfortaa ✦</option>
+            <option value="Montserrat" selected>Montserrat ✦</option>
+            <option value="Unbounded">Unbounded</option>
+            <option value="Nunito">Nunito</option>
+            <option value="Raleway">Raleway</option>
+            <option value="Oswald">Oswald</option>
+            <option value="Inter">Inter</option>
+            <option value="Roboto">Roboto</option>
+            <option value="Open Sans">Open Sans</option>
+            <option value="Playfair Display">Playfair Display</option>
+            <option value="PT Sans">PT Sans</option>
+            <option value="Arial">Arial</option>
+            <option value="Georgia">Georgia</option>
+          </select>
+        </div>
+        <div class="row">
+          <span class="rlbl">Размер</span>
+          <input type="number" class="ifield" id="fsize" value="20" min="6" max="220" oninput="txtProp('fontSize',this.value+'px')">
+          <span style="font-size:10px;color:#555">px</span>
+        </div>
+        <div class="row">
+          <span class="rlbl">Межстрочн.</span>
+          <input type="range" min="0.8" max="3" step="0.05" value="1.2" id="lhSlider" oninput="txtProp('lineHeight',this.value);lhVal.textContent=parseFloat(this.value).toFixed(1)">
+          <span class="rval" id="lhVal">1.2</span>
+        </div>
+        <div class="row">
+          <span class="rlbl">Межбукв.</span>
+          <input type="range" min="-2" max="10" step="0.5" value="0" id="lsSlider" oninput="txtProp('letterSpacing',this.value+'px');lsVal.textContent=this.value">
+          <span class="rval" id="lsVal">0</span>
+        </div>
+
+        <div class="sec">Начертание</div>
+        <div class="fbar">
+          <button class="fbtn" id="btnB" onclick="toggleStyle('bold')"><b>B</b></button>
+          <button class="fbtn" id="btnI" onclick="toggleStyle('italic')"><i>I</i></button>
+          <button class="fbtn" id="btnU" onclick="toggleStyle('underline')"><u>U</u></button>
+          <button class="fbtn" id="btnL" onclick="txtProp('textAlign','left')">⬛ L</button>
+          <button class="fbtn" id="btnC" onclick="txtProp('textAlign','center')">⬛ C</button>
+          <button class="fbtn" id="btnR" onclick="txtProp('textAlign','right')">⬛ R</button>
+        </div>
+
+        <div class="sec">Цвет текста</div>
+        <div class="palette" id="txtPalette"></div>
+        <div class="row">
+          <span class="rlbl">Свой цвет</span>
+          <input type="color" class="cc" id="txtPicker" value="#ffffff" oninput="txtProp('color',this.value)">
+          <input type="text" class="ifield" id="txtHex" value="#ffffff" maxlength="9" oninput="txtProp('color',this.value)">
+        </div>
+
+        <div class="sec">Обводка текста</div>
+        <div class="row">
+          <span class="rlbl">Цвет тени</span>
+          <input type="color" class="cc" id="shadowPicker" value="#000000" oninput="updateShadow()">
+          <input type="range" min="0" max="10" value="0" id="shadowSize" oninput="updateShadow();shadowVal.textContent=this.value">
+          <span class="rval" id="shadowVal">0</span>
+        </div>
+      </div>
+
+      <!-- ═══ PHOTO ═══ -->
+      <div class="panel" id="p-photo">
+        <div class="sec">Вставить фото</div>
+        <div class="upzone" onclick="document.getElementById('photoIn').click()">
+          <input type="file" id="photoIn" accept="image/*" onchange="addPhoto(this)">
+          <div class="uz">📷</div>
+          <p>Фото или PNG с прозрачным фоном<br><b>Перетащите или нажмите</b></p>
+        </div>
+
+        <div class="sec">Логотип</div>
+        <div class="upzone" onclick="document.getElementById('logoIn').click()">
+          <input type="file" id="logoIn" accept="image/*" onchange="addLogo(this)">
+          <div class="uz">🦊</div>
+          <p>Загрузить логотип (PNG)</p>
+        </div>
+        <button type="button" class="add-btn" onclick="addDefaultLogo()"><span class="icon">🦊</span>Вставить лого EA Б.Р (SVG)</button>
+
+        <div class="sec">Фото выделенного</div>
+        <div class="tog-row">
+          <span class="tog-lbl">Круглая рамка</span>
+          <div class="tog" id="circTog" onclick="toggleCircle(this)"></div>
+        </div>
+
+        <div class="sec">Удаление фона</div>
+        <div class="rmbg-box" id="rmbgBox">
+          <div class="rmbg-status" id="rmbgStatus">Выберите фото на слайде, затем нажмите кнопку</div>
+          <div class="tol-row">
+            <span class="rlbl">Точность</span>
+            <input type="range" min="5" max="120" value="30" id="tolSlider" title="Допуск цвета">
+            <span class="rval" id="tolVal">30</span>
+          </div>
+          <div class="rmbg-progress" id="rmbgProgress"><div class="rmbg-bar" id="rmbgBar"></div></div>
+          <button type="button" class="btn-rmbg" id="rmbgBtn" onclick="removeBgInApp()">✂ Удалить фон (белый/однородный)</button>
+        </div>
+        <p class="rmbg-note">Удаляет однородный фон (белый, чёрный и т.п.) — работает в Safari и Chrome.</p>
+      </div>
+
+      <!-- ═══ ELEMENTS ═══ -->
+      <div class="panel" id="p-el">
+        <div class="sec">Готовые элементы карточек</div>
+        <div class="presets-grid">
+          <button type="button" class="preset-btn preset-orange" onclick="addCardEl('cross')">✕ НЕ говори</button>
+          <button type="button" class="preset-btn preset-green" onclick="addCardEl('check')">✓ Скажи</button>
+          <button type="button" class="preset-btn preset-green" onclick="addCardEl('circleCheck')">⊙ Галочка в круге</button>
+          <button type="button" class="preset-btn preset-blue" onclick="addCardEl('badge')">🏷 Бейдж-метка</button>
+          <button type="button" class="preset-btn" onclick="addCardEl('shareBtn')">▷ SHARE кнопка</button>
+          <button type="button" class="preset-btn" onclick="addCardEl('saveBtn')">🏷 SAVE POST кнопка</button>
+          <button type="button" class="preset-btn" onclick="addCardEl('divider')">— Разделитель</button>
+          <button type="button" class="preset-btn" onclick="addCardEl('bullet')">• Буллет-пункт</button>
+        </div>
+
+        <div class="sec">Цвет выделенного элемента</div>
+        <div class="palette" id="elPalette"></div>
+        <div class="row">
+          <span class="rlbl">Свой цвет</span>
+          <input type="color" class="cc" id="elPicker" value="#4ade80" oninput="setElColor(this.value)">
+          <input type="text" class="ifield" id="elHex" value="#4ade80" maxlength="9" oninput="setElColor(this.value)">
+        </div>
+
+        <div class="sec">Фигуры</div>
+        <div class="presets-grid">
+          <button class="preset-btn" onclick="addShape('rect')">▬ Прямоугольник</button>
+          <button class="preset-btn" onclick="addShape('circle')">● Круг</button>
+          <button class="preset-btn" onclick="addShape('line')">— Линия</button>
+          <button class="preset-btn" onclick="addShape('roundRect')">▢ Скруглённый</button>
+        </div>
+
+        <div class="sec">Стикеры / эмодзи</div>
+        <div class="emoji-grid" id="emojiG"></div>
+      </div>
+
+      <!-- ═══ PROPS ═══ -->
+      <div class="panel" id="p-props">
+        <div id="propsArea"><div class="no-el">Выберите элемент на слайде</div></div>
+      </div>
+
+    </div>
+    </div><!-- /content-panel -->
+  </aside>
+
+  <div class="editor-area">
+    <div class="slide-canvas" id="cv" onclick="deselect(event)"></div>
+  </div>
+</div>
+
+<footer class="strip" id="strip">
+  <div class="add-sth" onclick="addSlide()">＋<span>Слайд</span></div>
+</footer>
+
+<script>
+// ══ FORMATS ══
+const FORMATS = {
+  post45:  { w:432,  h:540,  label:'4:5 Пост' },
+  post34:  { w:432,  h:576,  label:'3:4 Пост' },
+  square:  { w:432,  h:432,  label:'1:1 Квадрат' },
+  story:   { w:432,  h:768,  label:'9:16 Сторис' },
+  tgpost:  { w:432,  h:432,  label:'TG Пост' },
+  tgwide:  { w:432,  h:243,  label:'TG Широкий' },
+};
+let CUR_FMT = 'post45';
+
+// ══ STATE ══
+let W=432, H=540;
+let S={ slides:[], cur:0, selId:null, nid:1 };
+function slide(){ return S.slides[S.cur]; }
+function selEl(){ return S.selId ? slide().elements.find(e=>e.id===S.selId)||null : null; }
+function newId(){ return S.nid++; }
+
+function setFormat(key){
+  if(!FORMATS[key]) return;
+  CUR_FMT = key;
+  W = FORMATS[key].w;
+  H = FORMATS[key].h;
+  const cv = document.getElementById('cv');
+  cv.style.width  = W + 'px';
+  cv.style.height = H + 'px';
+  document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('on'));
+  const btn = document.getElementById('fmt-'+key);
+  if(btn) btn.classList.add('on');
+  renderAll();
+  scaleCanvas();
+}
+
+// ══ CANVAS AUTO-SCALE (fits screen) ══
+function scaleCanvas(){
+  const cv = document.getElementById('cv');
+  const area = document.querySelector('.editor-area');
+  if(!cv || !area) return;
+  const aW = area.clientWidth  - 48;
+  const aH = area.clientHeight - 48;
+  const scale = Math.min(1, aW / W, aH / H);
+  cv.style.transform = `scale(${scale})`;
+  cv.style.transformOrigin = 'top center';
+  cv.style.marginTop = scale < 1 ? Math.round((H * scale - H) / 2) + 'px' : '0';
+}
+
+// ══ INIT ══
+addEventListener('DOMContentLoaded',()=>{
+  addSlide('#1a7a3d');
+  buildBgPalette(); buildGradPresets(); buildTxtPalette(); buildElPalette(); buildEmoji();
+  updateCustomGrad();
+  const tol = document.getElementById('tolSlider');
+  if(tol) tol.addEventListener('input', ()=>{ document.getElementById('tolVal').textContent = tol.value; });
+  scaleCanvas();
+  addEventListener('resize', scaleCanvas);
+});
+
+// ══ PALETTE DATA ══
+const COLORS=[
+  // Красные
+  '#fee2e2','#fca5a5','#f87171','#ef4444','#dc2626','#b91c1c','#7f1d1d','#450a0a',
+  // Оранжевые
+  '#ffedd5','#fed7aa','#fdba74','#fb923c','#f97316','#ea580c','#c2410c','#7c2d12',
+  // Жёлтые
+  '#fef9c3','#fef08a','#fde047','#facc15','#eab308','#ca8a04','#a16207','#713f12',
+  // Зелёные
+  '#dcfce7','#86efac','#4ade80','#22c55e','#16a34a','#15803d','#1a7a3d','#14532d',
+  // Бирюзовые
+  '#ccfbf1','#5eead4','#2dd4bf','#14b8a6','#0d9488','#0f766e','#134e4a','#022c22',
+  // Синие
+  '#dbeafe','#93c5fd','#60a5fa','#3b82f6','#2563eb','#1d4ed8','#1a3dcc','#1e3a8a',
+  // Фиолетовые
+  '#f3e8ff','#d8b4fe','#c084fc','#a855f7','#9333ea','#7c3aed','#4c1d95','#4a1d96',
+  // Розовые
+  '#fce7f3','#f9a8d4','#f472b6','#ec4899','#db2777','#be185d','#881337','#4a0520',
+  // Нейтральные
+  '#ffffff','#f5f5f5','#d4d4d4','#a3a3a3','#737373','#525252','#2a2a2a','#000000',
+];
+
+const GRADS=[
+  ['linear-gradient(135deg,#1a7a3d,#0d4020)','Лесной'],
+  ['linear-gradient(135deg,#cc2222,#7a1010)','Алый'],
+  ['linear-gradient(135deg,#1a3dcc,#0d1f7a)','Синий'],
+  ['linear-gradient(135deg,#4a1d96,#1a0d40)','Фиолет'],
+  ['linear-gradient(135deg,#f5c842,#e87722)','Золото'],
+  ['linear-gradient(135deg,#0891b2,#1a3dcc)','Океан'],
+  ['linear-gradient(180deg,#1a1a1a,#3a3a3a)','Графит'],
+  ['linear-gradient(135deg,#cc2222,#4a1d96)','Закат'],
+  ['linear-gradient(135deg,#16a34a,#0891b2)','Мята'],
+  ['linear-gradient(135deg,#db2777,#7c3aed)','Малина'],
+  ['linear-gradient(180deg,#0d0d0d,#1a1a1a)','Чёрный'],
+  ['linear-gradient(135deg,#c2410c,#ca8a04)','Медь'],
+  ['linear-gradient(135deg,#14b8a6,#16a34a)','Нефрит'],
+  ['linear-gradient(135deg,#be185d,#7c3aed)','Орхидея'],
+  ['linear-gradient(135deg,#b91c1c,#ea580c)','Огонь'],
+  ['linear-gradient(135deg,#1e3a8a,#4a1d96)','Ночь'],
+  ['linear-gradient(180deg,#f5f5f5,#d4d4d4)','Жемчуг'],
+  ['linear-gradient(135deg,#7c3aed,#0891b2)','Аврора'],
+  ['linear-gradient(135deg,#15803d,#ca8a04)','Оливка'],
+  ['linear-gradient(135deg,#881337,#cc2222)','Бургунди'],
+];
+
+function buildBgPalette(){
+  const el=document.getElementById('bgPalette');
+  COLORS.forEach(c=>{ const d=document.createElement('div'); d.className='sw'+(c==='#ffffff'?' sw-white':''); d.style.background=c; d.title=c; d.onclick=()=>setBg(c); el.appendChild(d); });
+}
+function buildGradPresets(){
+  const el=document.getElementById('gradPresets');
+  GRADS.forEach(([g,n])=>{ const d=document.createElement('div'); d.className='gsw'; d.style.background=g; d.title=n; d.onclick=()=>{ slide().bgGrad=g; slide().bg=null; renderAll(); }; el.appendChild(d); });
+}
+function buildTxtPalette(){
+  const el=document.getElementById('txtPalette');
+  COLORS.forEach(c=>{ const d=document.createElement('div'); d.className='sw'+(c==='#ffffff'?' sw-white':''); d.style.background=c; d.onclick=()=>{ txtProp('color',c); document.getElementById('txtPicker').value=c.slice(0,7); document.getElementById('txtHex').value=c; }; el.appendChild(d); });
+}
+function buildElPalette(){
+  const el=document.getElementById('elPalette');
+  COLORS.forEach(c=>{ const d=document.createElement('div'); d.className='sw'+(c==='#ffffff'?' sw-white':''); d.style.background=c; d.onclick=()=>{ setElColor(c); document.getElementById('elPicker').value=c.slice(0,7); document.getElementById('elHex').value=c; }; el.appendChild(d); });
+}
+
+const EMOJIS=['✓','✕','★','♥','→','←','↑','↓','•','⊙','🦊','💊','🏥','📋','🩺','💉','❤','🧠','💪','🌿','⚕','📌','📝','📊','💡','⚡','🔥','✨','🎯','🤝','📣','🔔','🏆','👁','🔍','💎','🌟','⭐','🎗','🩹'];
+function buildEmoji(){
+  const el=document.getElementById('emojiG');
+  EMOJIS.forEach(em=>{ const b=document.createElement('div'); b.className='ebtn'; b.textContent=em; b.onclick=()=>addEmoji(em); el.appendChild(b); });
+}
+
+// ══ BACKGROUND ══
+function setBg(c){
+  if(!c||c.length<4) return;
+  slide().bg=c; slide().bgGrad=null;
+  const hp=document.getElementById('bgPicker'); if(hp&&c.length===7) hp.value=c;
+  const hh=document.getElementById('bgHex'); if(hh) hh.value=c;
+  renderAll();
+}
+function setBgImg(input){
+  if(!input.files[0]) return;
+  const r=new FileReader(); r.onload=e=>{ slide().bgImg=e.target.result; document.getElementById('bgOpRow').style.display='flex'; document.getElementById('rmBgImgBtn').style.display='flex'; renderAll(); }; r.readAsDataURL(input.files[0]); input.value='';
+}
+function setBgOp(v){ slide().bgImgOpacity=v/100; document.getElementById('bgOpVal').textContent=v+'%'; renderAll(); }
+function removeBgImg(){ slide().bgImg=null; document.getElementById('bgOpRow').style.display='none'; document.getElementById('rmBgImgBtn').style.display='none'; renderAll(); }
+
+function updateCustomGrad(){
+  const c1=document.getElementById('gc1').value, c2=document.getElementById('gc2').value, a=document.getElementById('gradAngle').value;
+  const g=`linear-gradient(${a}deg,${c1},${c2})`;
+  document.getElementById('gradPreview').style.background=g;
+}
+function applyCustomGrad(){
+  const c1=document.getElementById('gc1').value, c2=document.getElementById('gc2').value, a=document.getElementById('gradAngle').value;
+  slide().bgGrad=`linear-gradient(${a}deg,${c1},${c2})`; slide().bg=null; renderAll();
+}
+
+// ══ SLIDES ══
+function mkSlide(bg='#1a7a3d'){ return { bg, bgGrad:null, bgImg:null, bgImgOpacity:1, elements:[] }; }
+function addSlide(bg='#1a7a3d'){ S.slides.push(mkSlide(bg)); S.cur=S.slides.length-1; S.selId=null; renderAll(); }
+function duplicateSlide(){ const sl=JSON.parse(JSON.stringify(slide())); sl.elements.forEach(e=>e.id=newId()); S.slides.splice(S.cur+1,0,sl); S.cur++; S.selId=null; renderAll(); }
+function delSlide(i,ev){ ev&&ev.stopPropagation(); if(S.slides.length<=1) return; S.slides.splice(i,1); S.cur=Math.min(S.cur,S.slides.length-1); S.selId=null; renderAll(); }
+function gotoSlide(i){ S.cur=i; S.selId=null; renderAll(); }
+
+// ══ ELEMENTS — TEXT ══
+function mkTxtStyles(o={}){ return { fontFamily:'Montserrat', fontSize:'20px', color:'#ffffff', textAlign:'left', fontWeight:'normal', fontStyle:'normal', textDecoration:'none', lineHeight:'1.2', letterSpacing:'0px', textShadow:'none', ...o }; }
+
+function addTxt(txt='Введите текст', styles={}){
+  const el={ id:newId(), type:'text', x:20, y:100, w:300, h:60, text:txt, styles:mkTxtStyles(styles) };
+  slide().elements.push(el); S.selId=el.id; renderAll(); syncTxtCtrls(el); return el;
+}
+
+function txtProp(prop,val){
+  const el=selEl(); if(!el||el.type!=='text') return;
+  el.styles[prop]=val; renderAll(); syncTxtCtrls(el);
+}
+function toggleStyle(s){
+  const el=selEl(); if(!el||el.type!=='text') return;
+  if(s==='bold') el.styles.fontWeight=(el.styles.fontWeight==='700'||el.styles.fontWeight==='bold')?'normal':'700';
+  else if(s==='italic') el.styles.fontStyle=el.styles.fontStyle==='italic'?'normal':'italic';
+  else if(s==='underline') el.styles.textDecoration=el.styles.textDecoration==='underline'?'none':'underline';
+  renderAll(); syncTxtCtrls(el);
+}
+function updateShadow(){
+  const el=selEl(); if(!el||el.type!=='text') return;
+  const c=document.getElementById('shadowPicker').value, sz=document.getElementById('shadowSize').value;
+  el.styles.textShadow=sz>0?`0 0 ${sz}px ${c}, 0 0 ${sz*2}px ${c}`:'none';
+  renderAll();
+}
+function syncTxtCtrls(el){
+  if(!el) return;
+  document.getElementById('ffam').value=el.styles.fontFamily||'Montserrat';
+  document.getElementById('fsize').value=parseInt(el.styles.fontSize)||20;
+  document.getElementById('txtPicker').value=(el.styles.color||'#ffffff').slice(0,7);
+  document.getElementById('txtHex').value=el.styles.color||'#ffffff';
+  document.getElementById('lhSlider').value=el.styles.lineHeight||'1.2';
+  document.getElementById('lhVal').textContent=parseFloat(el.styles.lineHeight||1.2).toFixed(1);
+  document.getElementById('lsSlider').value=parseFloat(el.styles.letterSpacing)||0;
+  document.getElementById('lsVal').textContent=parseFloat(el.styles.letterSpacing)||0;
+  const bold=el.styles.fontWeight==='700'||el.styles.fontWeight==='bold';
+  document.getElementById('btnB').classList.toggle('on',bold);
+  document.getElementById('btnI').classList.toggle('on',el.styles.fontStyle==='italic');
+  document.getElementById('btnU').classList.toggle('on',el.styles.textDecoration==='underline');
+}
+
+// ══ ELEMENTS — PHOTO ══
+function addPhoto(input){
+  if(!input.files[0]) return;
+  const r=new FileReader(); r.onload=e=>{ const el={id:newId(),type:'image',x:90,y:160,w:170,h:170,src:e.target.result,circle:false}; slide().elements.push(el); S.selId=el.id; renderAll(); }; r.readAsDataURL(input.files[0]); input.value='';
+}
+function addLogo(input){
+  if(!input.files[0]) return;
+  const r=new FileReader(); r.onload=e=>{ const el={id:newId(),type:'image',x:W/2-60,y:10,w:120,h:55,src:e.target.result,circle:false}; slide().elements.push(el); S.selId=el.id; renderAll(); }; r.readAsDataURL(input.files[0]); input.value='';
+}
+// EA Б.Р Fox Logo SVG (white, transparent bg)
+const EABR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 195">
+  <text x="88" y="148" font-family="'Playfair Display',Georgia,serif" font-size="96" font-weight="700" fill="white" text-anchor="middle">ЕА</text>
+  <text x="392" y="148" font-family="'Playfair Display',Georgia,serif" font-size="96" font-weight="700" fill="white" text-anchor="middle">Б.Р</text>
+
+  <!-- FOX HEAD + EARS: single outline, fox-shaped (wide triangular ears, broad forehead, narrowing to pointed muzzle) -->
+  <path d="
+    M200,54
+    L214,7  L232,54
+    C238,52 242,52 248,54
+    L266,7  L280,54
+    C292,61 296,77 290,93
+    Q282,112 264,124
+    Q254,132 248,137
+    Q244,141 240,143
+    Q236,141 232,137
+    Q226,132 216,124
+    Q198,112 190,93
+    C184,77 188,61 200,54Z
+  " fill="white"/>
+
+  <!-- Inner ear definition -->
+  <path d="M214,14 L207,51 L224,51Z" fill="rgba(0,0,0,0.11)"/>
+  <path d="M266,14 L256,51 L273,51Z" fill="rgba(0,0,0,0.11)"/>
+
+  <!-- Snout: pointed extension below head (key fox feature) -->
+  <path d="M222,122 Q240,150 258,122 Q251,142 240,148 Q229,142 222,122Z" fill="white"/>
+
+  <!-- Nose tip -->
+  <ellipse cx="240" cy="145" rx="6" ry="5" fill="rgba(0,0,0,0.18)"/>
+
+  <!-- Eyes -->
+  <ellipse cx="224" cy="82" rx="4.5" ry="4.5" fill="rgba(0,0,0,0.15)"/>
+  <ellipse cx="256" cy="82" rx="4.5" ry="4.5" fill="rgba(0,0,0,0.15)"/>
+
+  <!-- Whiskers -->
+  <line x1="222" y1="124" x2="200" y2="118" stroke="rgba(200,200,200,0.45)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="222" y1="130" x2="199" y2="128" stroke="rgba(200,200,200,0.45)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="258" y1="124" x2="280" y2="118" stroke="rgba(200,200,200,0.45)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="258" y1="130" x2="281" y2="128" stroke="rgba(200,200,200,0.45)" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- BODY (sitting fox, wider oval below neck) -->
+  <path d="M214,153 Q215,148 220,146 Q230,151 240,152 Q250,151 260,146 Q265,148 266,153 Q270,175 262,188 Q252,194 240,194 Q228,194 218,188 Q210,175 214,153Z" fill="white"/>
+  <!-- Neck fill to connect head to body -->
+  <rect x="222" y="148" width="36" height="10" rx="4" fill="white"/>
+
+  <!-- TAIL (right side — large fluffy fox tail) -->
+  <path d="M266,158 Q285,160 293,175 Q296,189 280,192 Q264,195 255,183 Q249,174 252,163" fill="white"/>
+  <!-- Tail tip accent -->
+  <ellipse cx="282" cy="191" rx="13" ry="6" fill="white" opacity="0.95"/>
+
+  <!-- Front paws -->
+  <ellipse cx="224" cy="192" rx="13" ry="6" fill="white"/>
+  <ellipse cx="255" cy="192" rx="13" ry="6" fill="white"/>
+</svg>`;
+
+function addDefaultLogo(){
+  const src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(EABR_SVG);
+  const el={ id:newId(), type:'image', x:W/2-160, y:8, w:320, h:130, src, circle:false, isLogo:true };
+  slide().elements.push(el); S.selId=el.id; renderAll();
+}
+function toggleCircle(btn){
+  btn.classList.toggle('on');
+  const el=selEl(); if(el&&el.type==='image'){ el.circle=btn.classList.contains('on'); renderAll(); }
+}
+
+// ══ ELEMENTS — CARD PRESETS ══
+function addCardEl(type){
+  let el;
+  switch(type){
+    case 'cross':
+      el={ id:newId(), type:'text', x:20, y:120, w:380, h:50, text:'✕  Не говори «...»', styles:mkTxtStyles({ fontSize:'19px', fontWeight:'700', color:'#f5a623', fontFamily:'Montserrat' }) };
+      break;
+    case 'check':
+      el={ id:newId(), type:'text', x:20, y:180, w:380, h:50, text:'✓  Скажи «...»', styles:mkTxtStyles({ fontSize:'19px', fontWeight:'700', color:'#4ade80', fontFamily:'Montserrat' }) };
+      break;
+    case 'circleCheck':
+      el={ id:newId(), type:'circleCheck', x:20, y:140, w:340, h:40, text:'Текст пункта', fill:'#4ade80', textColor:'#ffffff', fontFamily:'Comfortaa', fontSize:'15px' };
+      break;
+    case 'badge':
+      el={ id:newId(), type:'badge', x:W/2-60, y:H-65, w:120, h:30, text:'ИДС', fill:'rgba(255,255,255,0.18)', textColor:'#ffffff', fontFamily:'Montserrat', fontSize:'13px', radius:8 };
+      break;
+    case 'shareBtn':
+      el={ id:newId(), type:'uibtn', x:18, y:H-66, w:108, h:40, label:'SHARE', iconType:'share', fill:'transparent', textColor:'#fff', borderColor:'#fff', radius:20 };
+      break;
+    case 'saveBtn':
+      el={ id:newId(), type:'uibtn', x:W-130, y:H-66, w:112, h:40, label:'SAVE POST', iconType:'save', fill:'transparent', textColor:'#fff', borderColor:'#fff', radius:20 };
+      break;
+    case 'divider':
+      el={ id:newId(), type:'shape', x:40, y:200, w:350, h:3, shapeType:'rect', fill:'rgba(255,255,255,0.3)', radius:2 };
+      break;
+    case 'bullet':
+      el={ id:newId(), type:'text', x:20, y:200, w:380, h:40, text:'• Пункт списка', styles:mkTxtStyles({ fontSize:'16px', color:'#ffffff', fontFamily:'Comfortaa' }) };
+      break;
+  }
+  if(el){ slide().elements.push(el); S.selId=el.id; renderAll(); }
+}
+
+function addShape(t){
+  let el;
+  if(t==='rect') el={ id:newId(),type:'shape',x:60,y:100,w:300,h:80,shapeType:'rect',fill:'#1a7a3d',radius:0 };
+  else if(t==='circle') el={ id:newId(),type:'shape',x:90,y:120,w:80,h:80,shapeType:'circle',fill:'#4ade80' };
+  else if(t==='line') el={ id:newId(),type:'shape',x:40,y:200,w:350,h:3,shapeType:'rect',fill:'#4ade80',radius:2 };
+  else if(t==='roundRect') el={ id:newId(),type:'shape',x:60,y:100,w:300,h:60,shapeType:'rect',fill:'#1a3dcc',radius:16 };
+  slide().elements.push(el); S.selId=el.id; renderAll();
+}
+
+function addEmoji(em){
+  const el={ id:newId(),type:'text',x:140,y:120,w:80,h:60,text:em,styles:mkTxtStyles({ fontSize:'38px',fontFamily:'sans-serif',textAlign:'center' }) };
+  slide().elements.push(el); S.selId=el.id; renderAll();
+}
+
+// ══ COLOR — universal for selected element ══
+function setElColor(c){
+  if(!c||c.length<4) return;
+  const el=selEl(); if(!el) return;
+  if(el.type==='text') { el.styles.color=c; }
+  else if(el.type==='shape') { el.fill=c; }
+  else if(el.type==='circleCheck') { el.fill=c; }
+  else if(el.type==='badge'||el.type==='uibtn') { el.textColor=c; }
+  renderAll();
+}
+
+// ══ RENDER ══
+function renderAll(){ renderSlide(); renderStrip(); document.getElementById('slideCtr').textContent=`${S.cur+1} / ${S.slides.length}`; renderProps(); }
+
+function renderSlide(){
+  const cv=document.getElementById('cv');
+  const sl=slide();
+  cv.style.background=sl.bgGrad||sl.bg||'#1a7a3d';
+
+  // bg image
+  let bgl=cv.querySelector('.bgl');
+  if(sl.bgImg){
+    if(!bgl){ bgl=document.createElement('div'); bgl.className='bgl'; bgl.style.cssText='position:absolute;inset:0;z-index:0;pointer-events:none;'; bgl.innerHTML='<img style="width:100%;height:100%;object-fit:cover;display:block;">'; cv.insertBefore(bgl,cv.firstChild); }
+    bgl.querySelector('img').src=sl.bgImg; bgl.style.opacity=sl.bgImgOpacity; bgl.style.display='block';
+  } else if(bgl) bgl.style.display='none';
+
+  cv.querySelectorAll('.el').forEach(e=>e.remove());
+  sl.elements.forEach(d=>cv.appendChild(mkElDiv(d)));
+}
+
+function mkElDiv(d){
+  const div=document.createElement('div');
+  div.className='el'+(d.id===S.selId?' sel':'');
+  div.dataset.id=d.id;
+  div.style.cssText=`left:${d.x}px;top:${d.y}px;width:${d.w}px;height:${d.h}px;z-index:${d.z||2};`;
+
+  // controls
+  const ctrl=document.createElement('div'); ctrl.className='el-ctrl';
+  ctrl.innerHTML=`<button class="ecb" title="Копия" onclick="dupEl(${d.id})">⧉</button><button class="ecb" onclick="mvLayer(${d.id},1)">↑</button><button class="ecb" onclick="mvLayer(${d.id},-1)">↓</button><button class="ecb del" onclick="delEl(${d.id})">✕</button>`;
+  div.appendChild(ctrl);
+
+  if(d.type==='text'){
+    const t=document.createElement('div'); t.className='text-el';
+    t.contentEditable='true'; t.textContent=d.text;
+    Object.assign(t.style, d.styles); t.style.width='100%'; t.style.height='100%'; t.style.overflow='hidden';
+    t.addEventListener('input',()=>d.text=t.textContent);
+    t.addEventListener('mousedown',e=>e.stopPropagation());
+    div.appendChild(t);
+
+  } else if(d.type==='image'){
+    const w=document.createElement('div'); w.className='img-wrap'+(d.circle?' circle':'');
+    const img=document.createElement('img'); img.src=d.src; img.draggable=false; w.appendChild(img); div.appendChild(w);
+
+  } else if(d.type==='shape'){
+    const sh=document.createElement('div');
+    sh.style.cssText=`width:100%;height:100%;background:${d.fill||'#4ade80'};border-radius:${d.shapeType==='circle'?'50%':(d.radius||0)+'px'};`;
+    div.appendChild(sh);
+
+  } else if(d.type==='circleCheck'){
+    // Row: colored circle with ✓ + text
+    const wrap=document.createElement('div');
+    wrap.style.cssText=`display:flex;align-items:center;gap:10px;width:100%;height:100%;`;
+    const circ=document.createElement('div');
+    circ.style.cssText=`width:32px;height:32px;border-radius:50%;background:${d.fill||'#4ade80'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;font-weight:900;color:#111;`;
+    circ.textContent='✓';
+    const txt=document.createElement('div');
+    txt.className='text-el'; txt.contentEditable='true'; txt.textContent=d.text;
+    txt.style.cssText=`font-family:${d.fontFamily||'Comfortaa'};font-size:${d.fontSize||'15px'};color:${d.textColor||'#fff'};flex:1;outline:none;`;
+    txt.addEventListener('input',()=>d.text=txt.textContent);
+    txt.addEventListener('mousedown',e=>e.stopPropagation());
+    wrap.appendChild(circ); wrap.appendChild(txt); div.appendChild(wrap);
+
+  } else if(d.type==='badge'){
+    const b=document.createElement('div');
+    b.style.cssText=`width:100%;height:100%;background:${d.fill||'rgba(255,255,255,.18)'};border-radius:${d.radius||8}px;display:flex;align-items:center;justify-content:center;font-family:${d.fontFamily||'Montserrat'};font-size:${d.fontSize||'13px'};font-weight:700;color:${d.textColor||'#fff'};`;
+    b.textContent=d.text;
+    div.appendChild(b);
+
+  } else if(d.type==='uibtn'){
+    const b=document.createElement('div');
+    const border=d.borderColor&&d.borderColor!=='transparent'?`1.5px solid ${d.borderColor}`:'none';
+    b.style.cssText=`width:100%;height:100%;background:${d.fill||'transparent'};border:${border};border-radius:${d.radius||20}px;display:flex;align-items:center;justify-content:center;gap:7px;color:${d.textColor||'#fff'};font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;`;
+    const SVG_SHARE=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${d.textColor||'#fff'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+    const SVG_SAVE=`<svg width="14" height="16" viewBox="0 0 24 24" fill="${d.textColor||'#fff'}" stroke="${d.textColor||'#fff'}" stroke-width="0"><path d="M6 2h12a2 2 0 0 1 2 2v16l-8-4-8 4V4a2 2 0 0 1 2-2z"/></svg>`;
+    let iconHtml='';
+    if(d.iconType==='share') iconHtml=SVG_SHARE;
+    else if(d.iconType==='save') iconHtml=SVG_SAVE;
+    else if(d.icon) iconHtml=`<span style="font-size:13px">${d.icon}</span>`;
+    b.innerHTML=`${iconHtml}<span>${d.label}</span>`;
+    div.appendChild(b);
+  }
+
+  // resize handles
+  if(d.id===S.selId){
+    ['nw','ne','sw','se'].forEach(p=>{
+      const h=document.createElement('div'); h.className=`rh rh-${p}`;
+      h.addEventListener('mousedown',e=>startResize(e,d,p));
+      h.addEventListener('touchstart',e=>startResizeTouch(e,d,p),{passive:false});
+      div.appendChild(h);
+    });
+  }
+
+  div.addEventListener('mousedown',e=>{
+    if(e.target.classList.contains('rh')||e.target.closest('.el-ctrl')) return;
+    e.preventDefault(); e.stopPropagation();
+    selElId(d.id); startDrag(e,d);
+  });
+  div.addEventListener('touchstart',e=>{
+    if(e.target.classList.contains('rh')||e.target.closest('.el-ctrl')) return;
+    e.preventDefault(); e.stopPropagation();
+    selElId(d.id); startDragTouch(e,d);
+  },{passive:false});
+  return div;
+}
+
+// ══ DRAG / RESIZE — Mouse ══
+function getEvXY(e){ return e.touches ? {x:e.touches[0].clientX,y:e.touches[0].clientY} : {x:e.clientX,y:e.clientY}; }
+
+function startDrag(e,d){
+  const {x:sx,y:sy}=getEvXY(e); const ox=d.x,oy=d.y;
+  const mv=ev=>{ const {x,y}=getEvXY(ev); d.x=ox+x-sx; d.y=oy+y-sy; const el=document.querySelector(`[data-id="${d.id}"]`); if(el){el.style.left=d.x+'px';el.style.top=d.y+'px';} };
+  const up=()=>{ removeEventListener('mousemove',mv); removeEventListener('mouseup',up); };
+  addEventListener('mousemove',mv); addEventListener('mouseup',up);
+}
+function startDragTouch(e,d){
+  const {x:sx,y:sy}=getEvXY(e); const ox=d.x,oy=d.y;
+  const mv=ev=>{ ev.preventDefault(); const {x,y}=getEvXY(ev); d.x=ox+x-sx; d.y=oy+y-sy; const el=document.querySelector(`[data-id="${d.id}"]`); if(el){el.style.left=d.x+'px';el.style.top=d.y+'px';} };
+  const up=()=>{ removeEventListener('touchmove',mv); removeEventListener('touchend',up); };
+  addEventListener('touchmove',mv,{passive:false}); addEventListener('touchend',up);
+}
+function startResize(e,d,handle){
+  e.preventDefault(); e.stopPropagation();
+  const {x:sx,y:sy}=getEvXY(e); const o={x:d.x,y:d.y,w:d.w,h:d.h};
+  const mv=ev=>{
+    const {x,y}=getEvXY(ev); const dx=x-sx,dy=y-sy;
+    if(handle.includes('e')) d.w=Math.max(20,o.w+dx);
+    if(handle.includes('s')) d.h=Math.max(10,o.h+dy);
+    if(handle.includes('w')){ d.w=Math.max(20,o.w-dx); d.x=o.x+o.w-d.w; }
+    if(handle.includes('n')){ d.h=Math.max(10,o.h-dy); d.y=o.y+o.h-d.h; }
+    const el=document.querySelector(`[data-id="${d.id}"]`);
+    if(el){ el.style.cssText=`left:${d.x}px;top:${d.y}px;width:${d.w}px;height:${d.h}px;z-index:${d.z||2};`; }
+  };
+  const up=()=>{ removeEventListener('mousemove',mv); removeEventListener('mouseup',up); renderSlide(); };
+  addEventListener('mousemove',mv); addEventListener('mouseup',up);
+}
+function startResizeTouch(e,d,handle){
+  e.preventDefault(); e.stopPropagation();
+  const {x:sx,y:sy}=getEvXY(e); const o={x:d.x,y:d.y,w:d.w,h:d.h};
+  const mv=ev=>{
+    ev.preventDefault(); const {x,y}=getEvXY(ev); const dx=x-sx,dy=y-sy;
+    if(handle.includes('e')) d.w=Math.max(20,o.w+dx);
+    if(handle.includes('s')) d.h=Math.max(10,o.h+dy);
+    if(handle.includes('w')){ d.w=Math.max(20,o.w-dx); d.x=o.x+o.w-d.w; }
+    if(handle.includes('n')){ d.h=Math.max(10,o.h-dy); d.y=o.y+o.h-d.h; }
+    const el=document.querySelector(`[data-id="${d.id}"]`);
+    if(el){ el.style.cssText=`left:${d.x}px;top:${d.y}px;width:${d.w}px;height:${d.h}px;z-index:${d.z||2};`; }
+  };
+  const up=()=>{ removeEventListener('touchmove',mv); removeEventListener('touchend',up); renderSlide(); };
+  addEventListener('touchmove',mv,{passive:false}); addEventListener('touchend',up);
+}
+
+// ══ SELECTION ══
+function selElId(id){
+  S.selId=id; renderAll();
+  const el=selEl();
+  if(el){
+    if(el.type==='text'){ syncTxtCtrls(el); tab('text',document.querySelectorAll('.stab')[1]); }
+    else if(el.type==='image'){ tab('photo',document.querySelectorAll('.stab')[2]); document.getElementById('circTog').classList.toggle('on',!!el.circle); }
+    else { tab('el',document.querySelectorAll('.stab')[3]); }
+    // sync el color
+    const c=el.type==='text'?el.styles.color:el.fill||el.textColor||'#4ade80';
+    if(c){ try{ document.getElementById('elPicker').value=c.slice(0,7); document.getElementById('elHex').value=c; }catch(e){} }
+  }
+}
+function deselect(e){
+  if(e.target===document.getElementById('cv')||e.target.classList.contains('bgl')){ S.selId=null; renderAll(); }
+}
+
+// ══ ELEMENT OPS ══
+function delEl(id){ slide().elements=slide().elements.filter(e=>e.id!==id); if(S.selId===id) S.selId=null; renderAll(); }
+function dupEl(id){ const o=slide().elements.find(e=>e.id===id); if(!o) return; const c=JSON.parse(JSON.stringify(o)); c.id=newId(); c.x+=14; c.y+=14; slide().elements.push(c); S.selId=c.id; renderAll(); }
+function mvLayer(id,dir){ const sl=slide().elements; const i=sl.findIndex(e=>e.id===id); if(i<0) return; const ni=Math.max(0,Math.min(sl.length-1,i+dir)); const [el]=sl.splice(i,1); sl.splice(ni,0,el); renderAll(); }
+
+// ══ PROPS PANEL ══
+function renderProps(){
+  const d=selEl(); const a=document.getElementById('propsArea');
+  if(!d){ a.innerHTML='<div class="no-el">Выберите элемент на слайде</div>'; return; }
+
+  let h='';
+  if(d.type==='shape'){
+    h+=`<div class="sec">Цвет фигуры</div>
+    <div class="row"><span class="rlbl">Заливка</span><input type="color" class="cc" value="${d.fill?.slice(0,7)||'#4ade80'}" oninput="selEl().fill=this.value;renderAll()">
+    <input type="text" class="ifield" value="${d.fill||'#4ade80'}" oninput="selEl().fill=this.value;renderAll()"></div>
+    <div class="row"><span class="rlbl">Скругл.</span><input type="range" min="0" max="100" value="${d.radius||0}" oninput="selEl().radius=+this.value;renderAll()"><span class="rval">${d.radius||0}px</span></div>`;
+  } else if(d.type==='circleCheck'){
+    h+=`<div class="sec">Галочка в круге</div>
+    <div class="row"><span class="rlbl">Цвет круга</span><input type="color" class="cc" value="${d.fill?.slice(0,7)||'#4ade80'}" oninput="selEl().fill=this.value;renderAll()"></div>
+    <div class="row"><span class="rlbl">Цвет текста</span><input type="color" class="cc" value="${d.textColor?.slice(0,7)||'#ffffff'}" oninput="selEl().textColor=this.value;renderAll()"></div>
+    <div class="row"><span class="rlbl">Шрифт</span><select class="ifield" onchange="selEl().fontFamily=this.value;renderAll()">
+      ${['Comfortaa','Montserrat','Roboto','Open Sans','Inter','PT Sans'].map(f=>`<option value="${f}"${d.fontFamily===f?' selected':''}>${f}</option>`).join('')}</select></div>
+    <div class="row"><span class="rlbl">Размер</span><input type="number" class="ifield" value="${parseInt(d.fontSize)||15}" oninput="selEl().fontSize=this.value+'px';renderAll()"></div>`;
+  } else if(d.type==='badge'){
+    h+=`<div class="sec">Бейдж-метка</div>
+    <div class="row"><span class="rlbl">Текст</span><input type="text" class="ifield" value="${d.text}" oninput="selEl().text=this.value;renderAll()"></div>
+    <div class="row"><span class="rlbl">Фон</span><input type="color" class="cc" value="${d.fill?.replace(/rgba.*/,'#ffffff')||'#ffffff'}" oninput="selEl().fill=this.value;renderAll()"></div>
+    <div class="row"><span class="rlbl">Цвет текста</span><input type="color" class="cc" value="${d.textColor?.slice(0,7)||'#ffffff'}" oninput="selEl().textColor=this.value;renderAll()"></div>`;
+  } else if(d.type==='uibtn'){
+    h+=`<div class="sec">Кнопка</div>
+    <div class="row"><span class="rlbl">Текст</span><input type="text" class="ifield" value="${d.label}" oninput="selEl().label=this.value;renderAll()"></div>
+    <div class="row"><span class="rlbl">Цвет</span><input type="color" class="cc" value="${d.textColor?.slice(0,7)||'#ffffff'}" oninput="selEl().textColor=this.value;renderAll()"></div>
+    <div class="row"><span class="rlbl">Бордер</span><input type="color" class="cc" value="${d.borderColor?.slice(0,7)||'#ffffff'}" oninput="selEl().borderColor=this.value;renderAll()"></div>
+    <div class="row"><span class="rlbl">Фон</span><input type="color" class="cc" value="${d.fill?.replace(/rgba.*/,'#111111')||'#111111'}" oninput="selEl().fill=this.value;renderAll()"></div>`;
+  }
+
+  h+=`<div class="sec">Позиция и размер</div>
+  <div class="row"><span class="rlbl">X</span><input type="number" class="ifield" value="${Math.round(d.x)}" oninput="selEl().x=+this.value;renderAll()"><span class="rlbl">Y</span><input type="number" class="ifield" value="${Math.round(d.y)}" oninput="selEl().y=+this.value;renderAll()"></div>
+  <div class="row"><span class="rlbl">Ширина</span><input type="number" class="ifield" value="${Math.round(d.w)}" oninput="selEl().w=+this.value;renderAll()"><span class="rlbl">Высота</span><input type="number" class="ifield" value="${Math.round(d.h)}" oninput="selEl().h=+this.value;renderAll()"></div>
+  <div class="sec">Слои</div>
+  <div class="lrow"><button onclick="mvLayer(${d.id},1)">↑ Выше</button><button onclick="mvLayer(${d.id},-1)">↓ Ниже</button><button onclick="dupEl(${d.id})">⧉ Копия</button></div>
+  <button class="add-btn" style="border-color:#f87171;color:#f87171;margin-top:4px" onclick="delEl(${d.id})">✕ Удалить элемент</button>`;
+
+  a.innerHTML=h;
+}
+
+// ══ STRIP ══
+function renderStrip(){
+  const strip=document.getElementById('strip');
+  strip.querySelectorAll('.sth').forEach(e=>e.remove());
+  const addBtn=strip.querySelector('.add-sth');
+  S.slides.forEach((sl,i)=>{
+    const th=document.createElement('div'); th.className='sth'+(i===S.cur?' on':''); th.onclick=()=>gotoSlide(i);
+    const del=document.createElement('div'); del.className='sth-del'; del.textContent='✕'; del.onclick=e=>delSlide(i,e);
+    const mini=document.createElement('div'); mini.style.cssText=`width:64px;height:80px;overflow:hidden;position:relative;${sl.bgGrad?'background:'+sl.bgGrad:'background:'+(sl.bg||'#1a7a3d')};`;
+    if(sl.bgImg){ const im=document.createElement('img'); im.src=sl.bgImg; im.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;'; im.style.opacity=sl.bgImgOpacity; mini.appendChild(im); }
+    const sc=64/W;
+    sl.elements.forEach(el=>{ if(el.type==='text'){ const t=document.createElement('div'); t.style.cssText=`position:absolute;left:${el.x*sc}px;top:${el.y*sc}px;width:${el.w*sc}px;font-size:${parseInt(el.styles.fontSize)*sc}px;color:${el.styles.color};font-family:${el.styles.fontFamily};font-weight:${el.styles.fontWeight};overflow:hidden;white-space:nowrap;pointer-events:none;line-height:1;`; t.textContent=el.text; mini.appendChild(t); } });
+    const num=document.createElement('div'); num.className='sth-n'; num.textContent=i+1;
+    th.appendChild(del); th.appendChild(mini); th.appendChild(num); strip.insertBefore(th,addBtn);
+  });
+}
+
+// ══ TAB ══
+const TAB_TITLES = { bg:'Фон', text:'Текст', photo:'Фото', el:'Элементы', props:'Свойства' };
+function tab(name, btn) {
+  document.querySelectorAll('.ic-btn').forEach(t => t.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  else { const el = document.getElementById('ic-'+name); if(el) el.classList.add('on'); }
+  document.getElementById('p-'+name)?.classList.add('on');
+  const titleEl = document.getElementById('cpanelTitle');
+  if (titleEl) titleEl.textContent = TAB_TITLES[name] || name;
+}
+
+// ══ EXPORT ══
+async function captureSlide(idx){
+  const savCur=S.cur, savSel=S.selId;
+  S.cur=idx; S.selId=null; renderSlide();
+  await new Promise(r=>setTimeout(r,250));
+  const cv=document.getElementById('cv');
+  const canvas=await html2canvas(cv,{ scale:2.5, useCORS:true, allowTaint:true, backgroundColor:null, width:W, height:H, logging:false });
+  S.cur=savCur; S.selId=savSel; renderAll();
+  return canvas;
+}
+async function exportCurrent(){
+  const btn=event.target; btn.textContent='⏳...'; btn.disabled=true;
+  try{ const c=await captureSlide(S.cur); const a=document.createElement('a'); a.href=c.toDataURL('image/png'); a.download=`slide_${S.cur+1}.png`; a.click(); }
+  catch(e){ alert('Ошибка: '+e.message); }
+  btn.textContent='↓ PNG'; btn.disabled=false;
+}
+async function exportAll(){
+  const btn=event.target; btn.disabled=true;
+  try{
+    const zip=new JSZip();
+    for(let i=0;i<S.slides.length;i++){ btn.textContent=`⏳ ${i+1}/${S.slides.length}`; const c=await captureSlide(i); const blob=await new Promise(r=>c.toBlob(r,'image/png')); zip.file(`slide_${String(i+1).padStart(2,'0')}.png`,blob); }
+    const blob=await zip.generateAsync({type:'blob'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='carousel.zip'; a.click();
+  } catch(e){ alert('Ошибка: '+e.message); }
+  btn.textContent='↓ ZIP все слайды'; btn.disabled=false;
+}
+
+// ══ BACKGROUND REMOVAL (Canvas flood-fill, works in Safari + Chrome, no internet) ══
+function removeBgInApp() {
+  const el = selEl();
+  const btn = document.getElementById('rmbgBtn');
+  const status = document.getElementById('rmbgStatus');
+  const progress = document.getElementById('rmbgProgress');
+  const bar = document.getElementById('rmbgBar');
+
+  if (!el || el.type !== 'image') {
+    status.textContent = '⚠ Сначала выберите фото на слайде';
+    status.style.color = 'var(--red)';
+    return;
+  }
+
+  const tolerance = parseInt(document.getElementById('tolSlider').value) || 30;
+  btn.disabled = true;
+  progress.style.display = 'block';
+  bar.style.width = '20%';
+  status.textContent = '⏳ Обработка…';
+  status.style.color = 'var(--mut)';
+
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      bar.style.width = '45%';
+
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imgData.data;
+      const w = canvas.width, h = canvas.height;
+
+      // Sample background colour from 4 corners (average)
+      function px(x,y){ const i=(y*w+x)*4; return [data[i],data[i+1],data[i+2],data[i+3]]; }
+      const corners = [px(0,0),px(w-1,0),px(0,h-1),px(w-1,h-1)];
+      const bgR = Math.round(corners.reduce((s,c)=>s+c[0],0)/4);
+      const bgG = Math.round(corners.reduce((s,c)=>s+c[1],0)/4);
+      const bgB = Math.round(corners.reduce((s,c)=>s+c[2],0)/4);
+
+      function colorDiff(r,g,b){ return Math.sqrt((r-bgR)**2+(g-bgG)**2+(b-bgB)**2); }
+
+      // Flood-fill queue from corners
+      const visited = new Uint8Array(w*h);
+      const queue = [];
+      [[0,0],[w-1,0],[0,h-1],[w-1,h-1]].forEach(([x,y])=>{ if(!visited[y*w+x]){ visited[y*w+x]=1; queue.push(y*w+x); } });
+
+      while(queue.length){
+        const idx = queue.pop();
+        const x = idx % w, y = (idx/w)|0;
+        const pi = idx*4;
+        if(colorDiff(data[pi],data[pi+1],data[pi+2]) <= tolerance){
+          data[pi+3] = 0; // transparent
+          const neighbors = [ idx-1, idx+1, idx-w, idx+w ];
+          for(const ni of neighbors){
+            if(ni>=0 && ni<w*h && !visited[ni]){
+              const nx=ni%w;
+              if(Math.abs(nx-(idx%w))<=1){ visited[ni]=1; queue.push(ni); }
+            }
+          }
+        }
+      }
+
+      bar.style.width = '85%';
+      ctx.putImageData(imgData, 0, 0);
+      el.src = canvas.toDataURL('image/png');
+      bar.style.width = '100%';
+      status.textContent = '✓ Фон удалён! Если мало — увеличь «Точность» и повтори.';
+      status.style.color = 'var(--accent)';
+      renderAll();
+    } catch(e) {
+      status.textContent = '✕ Ошибка: ' + e.message;
+      status.style.color = 'var(--red)';
+    }
+    btn.disabled = false;
+    setTimeout(() => { progress.style.display='none'; bar.style.width='0'; }, 3500);
+  };
+  img.onerror = () => {
+    status.textContent = '✕ Не удалось загрузить изображение';
+    status.style.color = 'var(--red)';
+    btn.disabled = false;
+    progress.style.display = 'none';
+  };
+  img.src = el.src;
+}
+
+// ══ SAVE / LOAD ══
+function saveProject(){
+  try{ localStorage.setItem('cb_proj',JSON.stringify({slides:S.slides,nid:S.nid})); }
+  catch(e){ alert('Слишком много изображений для сохранения в браузере'); return; }
+  alert('Проект сохранён ✓');
+}
+function loadProject(){
+  const d=localStorage.getItem('cb_proj'); if(!d) return alert('Нет сохранённого проекта');
+  const p=JSON.parse(d); S.slides=p.slides; S.nid=p.nid; S.cur=0; S.selId=null; renderAll();
+}
+
+// ══ KEYBOARD ══
+document.addEventListener('keydown',e=>{
+  if(e.target.isContentEditable||e.target.tagName==='INPUT'||e.target.tagName==='SELECT') return;
+  if(e.key==='Delete'||e.key==='Backspace'){ if(S.selId) delEl(S.selId); }
+  if(e.key==='Escape'){ S.selId=null; renderAll(); }
+  if(S.selId){
+    const el=selEl(); if(!el) return;
+    const step=e.shiftKey?10:1;
+    if(e.key==='ArrowLeft'){ el.x-=step; renderAll(); e.preventDefault(); }
+    if(e.key==='ArrowRight'){ el.x+=step; renderAll(); e.preventDefault(); }
+    if(e.key==='ArrowUp'){ el.y-=step; renderAll(); e.preventDefault(); }
+    if(e.key==='ArrowDown'){ el.y+=step; renderAll(); e.preventDefault(); }
+  }
+});
+
+// ══ DROP FILES ON CANVAS ══
+document.getElementById('cv').addEventListener('dragover',e=>e.preventDefault());
+document.getElementById('cv').addEventListener('drop',e=>{
+  e.preventDefault();
+  const file=e.dataTransfer.files[0]; if(!file||!file.type.startsWith('image/')) return;
+  const r=new FileReader(); r.onload=ev=>{ const el={id:newId(),type:'image',x:60,y:100,w:200,h:200,src:ev.target.result,circle:false}; slide().elements.push(el); S.selId=el.id; renderAll(); }; r.readAsDataURL(file);
+});
+</script>
+</body>
+</html>

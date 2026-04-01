@@ -538,9 +538,9 @@
 
         <div class="sec">Фоновое изображение</div>
         <div class="upzone" onclick="document.getElementById('bgImgIn').click()">
-          <input type="file" id="bgImgIn" accept="image/*" onchange="setBgImg(this)">
+          <input type="file" id="bgImgIn" accept="image/*,.heic,.heif,.avif,.webp,.jpg,.jpeg,.png,.gif,.bmp,.svg,.tiff" onchange="setBgImg(this)">
           <div class="uz">🖼</div>
-          <p>Нажмите для выбора<br>фонового изображения</p>
+          <p>JPG, PNG, WebP, HEIC, GIF…<br>Нажмите или перетащите файл</p>
         </div>
         <div class="row" id="bgOpRow" style="display:none">
           <span class="rlbl">Прозрач.</span>
@@ -628,16 +628,16 @@
       <div class="panel" id="p-photo">
         <div class="sec">Вставить фото</div>
         <div class="upzone" onclick="document.getElementById('photoIn').click()">
-          <input type="file" id="photoIn" accept="image/*" onchange="addPhoto(this)">
+          <input type="file" id="photoIn" accept="image/*,.heic,.heif,.avif,.webp,.jpg,.jpeg,.png,.gif,.bmp,.svg,.tiff" onchange="addPhoto(this)">
           <div class="uz">📷</div>
-          <p>Фото или PNG с прозрачным фоном<br><b>Перетащите или нажмите</b></p>
+          <p>JPG, PNG, WebP, HEIC, AVIF, GIF…<br><b>Перетащите или нажмите</b></p>
         </div>
 
         <div class="sec">Логотип</div>
         <div class="upzone" onclick="document.getElementById('logoIn').click()">
-          <input type="file" id="logoIn" accept="image/*" onchange="addLogo(this)">
+          <input type="file" id="logoIn" accept="image/*,.heic,.heif,.avif,.webp,.jpg,.jpeg,.png,.gif,.bmp,.svg,.tiff" onchange="addLogo(this)">
           <div class="uz">🦊</div>
-          <p>Загрузить логотип (PNG)</p>
+          <p>PNG, SVG, WebP, HEIC…<br>Нажмите или перетащите</p>
         </div>
         <button type="button" class="add-btn" onclick="addDefaultLogo()"><span class="icon">🦊</span>Вставить лого EA Б.Р (SVG)</button>
 
@@ -1407,11 +1407,40 @@ document.addEventListener('keydown',e=>{
 });
 
 // ══ DROP FILES ON CANVAS ══
-document.getElementById('cv').addEventListener('dragover',e=>e.preventDefault());
-document.getElementById('cv').addEventListener('drop',e=>{
+// ── Drag & drop на холст и на всё окно ──
+function isImageFile(f){
+  return f.type.startsWith('image/') || /\.(heic|heif|avif|webp|jpg|jpeg|png|gif|bmp|svg|tiff|tif)$/i.test(f.name);
+}
+function dropFileToSlide(file, offsetX, offsetY){
+  const r=new FileReader();
+  r.onload=ev=>{
+    const el={id:newId(),type:'image',x:Math.max(0,offsetX-100),y:Math.max(0,offsetY-100),w:200,h:200,src:ev.target.result,circle:false};
+    slide().elements.push(el); S.selId=el.id; renderAll();
+  };
+  r.readAsDataURL(file);
+}
+
+const cv=document.getElementById('cv');
+cv.addEventListener('dragover',e=>{ e.preventDefault(); cv.style.outline='2px solid var(--accent)'; });
+cv.addEventListener('dragleave',()=>{ cv.style.outline=''; });
+cv.addEventListener('drop',e=>{
+  e.preventDefault(); cv.style.outline='';
+  const rect=cv.getBoundingClientRect();
+  Array.from(e.dataTransfer.files).forEach((file,i)=>{
+    if(!isImageFile(file)) return;
+    dropFileToSlide(file, e.clientX-rect.left + i*20, e.clientY-rect.top + i*20);
+  });
+});
+
+// Drop на всё окно (если промахнулись мимо холста)
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>{
+  if(e.target.closest('#cv')) return; // уже обработано выше
   e.preventDefault();
-  const file=e.dataTransfer.files[0]; if(!file||!file.type.startsWith('image/')) return;
-  const r=new FileReader(); r.onload=ev=>{ const el={id:newId(),type:'image',x:60,y:100,w:200,h:200,src:ev.target.result,circle:false}; slide().elements.push(el); S.selId=el.id; renderAll(); }; r.readAsDataURL(file);
+  Array.from(e.dataTransfer.files).forEach((file,i)=>{
+    if(!isImageFile(file)) return;
+    dropFileToSlide(file, 60+i*20, 100+i*20);
+  });
 });
 </script>
 </body>

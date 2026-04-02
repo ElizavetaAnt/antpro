@@ -1268,7 +1268,38 @@ function mkElDiv(d){
     if(e.target.classList.contains('rh')||e.target.classList.contains('rh-rot')||e.target.closest('.el-ctrl')) return;
     e.preventDefault(); e.stopPropagation();
     quickSelect(d.id);
-    startDragTouch(e, d, div);
+
+    if(e.touches.length===2){
+      // 2 пальца — масштаб элемента
+      const startDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      const startW=d.w, startH=d.h;
+      const mv2=ev=>{
+        if(ev.touches.length!==2) return;
+        ev.preventDefault(); ev.stopPropagation();
+        const dist=Math.hypot(ev.touches[0].clientX-ev.touches[1].clientX,ev.touches[0].clientY-ev.touches[1].clientY);
+        const ratio=dist/startDist;
+        d.w=Math.max(20,Math.round(startW*ratio));
+        d.h=Math.max(20,Math.round(startH*ratio));
+        div.style.width=d.w+'px'; div.style.height=d.h+'px';
+      };
+      const up2=()=>{ removeEventListener('touchmove',mv2); removeEventListener('touchend',up2); autoSave(); };
+      addEventListener('touchmove',mv2,{passive:false}); addEventListener('touchend',up2);
+      return;
+    }
+
+    // 1 палец — тап (выделение) с порогом 8px перед началом drag
+    const sc=cvScale(); const {x:sx,y:sy}=getEvXY(e); const ox=d.x,oy=d.y;
+    let dragging=false;
+    const mv=ev=>{
+      if(ev.touches.length!==1){ removeEventListener('touchmove',mv); return; }
+      ev.preventDefault();
+      const {x,y}=getEvXY(ev);
+      const dx=x-sx, dy=y-sy;
+      if(!dragging && Math.hypot(dx,dy)>8){ dragging=true; pushHistory(); }
+      if(dragging){ d.x=ox+dx/sc; d.y=oy+dy/sc; div.style.left=d.x+'px'; div.style.top=d.y+'px'; }
+    };
+    const up=()=>{ removeEventListener('touchmove',mv); removeEventListener('touchend',up); if(dragging) autoSave(); };
+    addEventListener('touchmove',mv,{passive:false}); addEventListener('touchend',up);
   },{passive:false});
   return div;
 }
@@ -1318,13 +1349,7 @@ function startDrag(e, d, div){
   addEventListener('mousemove', mv);
   addEventListener('mouseup', up);
 }
-function startDragTouch(e,d,div){
-  pushHistory();
-  const sc=cvScale(); const {x:sx,y:sy}=getEvXY(e); const ox=d.x,oy=d.y;
-  const mv=ev=>{ ev.preventDefault(); const {x,y}=getEvXY(ev); d.x=ox+(x-sx)/sc; d.y=oy+(y-sy)/sc; div.style.left=d.x+'px'; div.style.top=d.y+'px'; };
-  const up=()=>{ removeEventListener('touchmove',mv); removeEventListener('touchend',up); autoSave(); };
-  addEventListener('touchmove',mv,{passive:false}); addEventListener('touchend',up);
-}
+
 function startResize(e,d,handle){
   e.preventDefault(); e.stopPropagation(); pushHistory();
   const sc=cvScale(); const {x:sx,y:sy}=getEvXY(e); const o={x:d.x,y:d.y,w:d.w,h:d.h};

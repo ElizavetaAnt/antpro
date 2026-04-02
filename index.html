@@ -411,12 +411,58 @@
     @media (max-width:600px){
       body { overflow:auto; height:auto; }
       .workspace { flex-direction:column; overflow:visible; }
-      .sidebar { width:100%; flex-direction:row; height:auto; border-right:none; border-bottom:1px solid var(--brd); }
-      .icon-strip { flex-direction:row; width:auto; height:48px; padding:0 8px; overflow-x:auto; gap:0; border-right:none; border-bottom:1px solid var(--brd); }
-      .content-panel { max-height:220px; overflow-y:auto; }
-      .editor-area { min-height:420px; align-items:flex-start; padding:12px; overflow:auto; }
+
+      /* Sidebar → fixed bottom panel */
+      .sidebar {
+        position:fixed; bottom:0; left:0; right:0; width:100%;
+        flex-direction:column-reverse; /* sheet above tab bar */
+        height:auto; border-right:none; border-top:1px solid var(--brd);
+        z-index:200; background:var(--surf); box-shadow:0 -4px 20px rgba(0,0,0,.4);
+      }
+
+      /* Icon strip → bottom tab bar */
+      .icon-strip {
+        flex-direction:row; width:100%; height:54px;
+        padding:0 4px; overflow-x:auto; gap:0;
+        border-right:none; border-top:1px solid var(--brd);
+        justify-content:space-around; background:var(--navy);
+        scrollbar-width:none;
+      }
+      .icon-strip::-webkit-scrollbar { display:none; }
+      .ic-btn { flex:1; min-width:54px; padding:6px 2px 4px; border-radius:0; }
+      .ic-btn .ico svg { width:20px; height:20px; }
+      .ic-btn .lbl { font-size:7px; }
+
+      /* Bottom sheet (content panel) */
+      .content-panel {
+        max-height:0; overflow:hidden;
+        transition:max-height .3s ease;
+        background:var(--surf);
+      }
+      .content-panel.mob-open {
+        max-height:52vh;
+        overflow-y:auto;
+      }
+      .cpanel-head {
+        display:flex; align-items:center; justify-content:space-between;
+        padding:8px 12px 6px; border-bottom:1px solid var(--brd);
+        position:sticky; top:0; background:var(--surf); z-index:1;
+      }
+      /* drag handle indicator */
+      .cpanel-head::before {
+        content:''; display:block; position:absolute;
+        top:6px; left:50%; transform:translateX(-50%);
+        width:36px; height:4px; background:var(--brd2); border-radius:2px;
+      }
+
+      /* Editor area — padding for bottom bar (54px tab bar, up to 52vh sheet) */
+      .editor-area {
+        min-height:calc(100svh - 160px);
+        align-items:flex-start; padding:10px 8px 70px;
+        overflow:auto;
+      }
       .slide-canvas { transform-origin:top left; }
-      .strip { height:90px; }
+      .strip { height:90px; padding-bottom:60px; }
       .sth { width:52px; height:64px; }
       .topbar { flex-wrap:wrap; height:auto; padding:8px 10px; gap:5px; }
       .tb-logo { width:100%; }
@@ -1191,33 +1237,70 @@ function mkElDiv(d){
   }
 
   div.addEventListener('mousedown',e=>{
-    if(e.target.classList.contains('rh')||e.target.closest('.el-ctrl')) return;
+    if(e.target.classList.contains('rh')||e.target.classList.contains('rh-rot')||e.target.closest('.el-ctrl')) return;
     e.preventDefault(); e.stopPropagation();
-    selElId(d.id); startDrag(e,d);
+    // Лёгкая смена выделения без полного ре-рендера
+    quickSelect(d.id);
+    startDrag(e, d, div);
   });
   div.addEventListener('touchstart',e=>{
-    if(e.target.classList.contains('rh')||e.target.closest('.el-ctrl')) return;
+    if(e.target.classList.contains('rh')||e.target.classList.contains('rh-rot')||e.target.closest('.el-ctrl')) return;
     e.preventDefault(); e.stopPropagation();
-    selElId(d.id); startDragTouch(e,d);
+    quickSelect(d.id);
+    startDragTouch(e, d, div);
   },{passive:false});
   return div;
 }
 
-// ══ DRAG / RESIZE / ROTATE ══
-function getEvXY(e){ return e.touches ? {x:e.touches[0].clientX,y:e.touches[0].clientY} : {x:e.clientX,y:e.clientY}; }
-function cvScale(){ const cv=document.getElementById('cv'); const m=cv.style.transform.match(/scale\(([\d.]+)\)/); return m?parseFloat(m[1]):1; }
-
-function startDrag(e,d){
-  pushHistory();
-  const sc=cvScale(); const {x:sx,y:sy}=getEvXY(e); const ox=d.x,oy=d.y;
-  const mv=ev=>{ const {x,y}=getEvXY(ev); d.x=ox+(x-sx)/sc; d.y=oy+(y-sy)/sc; const el=document.querySelector(`[data-id="${d.id}"]`); if(el){el.style.left=d.x+'px';el.style.top=d.y+'px';} };
-  const up=()=>{ removeEventListener('mousemove',mv); removeEventListener('mouseup',up); autoSave(); };
-  addEventListener('mousemove',mv); addEventListener('mouseup',up);
+// Смена выделения без ре-рендера всего слайда
+function quickSelect(id){
+  S.selId = id;
+  document.querySelectorAll('.el').forEach(el=>{
+    const isMe = el.dataset.id == id;
+    el.classList.toggle('sel', isMe);
+    const ctrl = el.querySelector('.el-ctrl');
+    if(ctrl) ctrl.style.display = isMe ? 'flex' : 'none';
+    // показываем/скрываем resize handles и rotation
+    el.querySelectorAll('.rh, .rh-rot').forEach(h=>{ h.style.display = isMe ? '' : 'none'; });
+  });
+  // Обновляем панель свойств без пересоздания элементов
+  const el = selEl();
+  if(el){
+    if(el.type==='text'){ syncTxtCtrls(el); tab('text',document.getElementById('ic-text')); }
+    else if(el.type==='image'){ tab('photo',document.getElementById('ic-photo')); try{ document.getElementById('circTog').classList.toggle('on',!!el.circle); }catch(e){} }
+    else { tab('el',document.getElementById('ic-el')); }
+  }
+  autoSave();
 }
-function startDragTouch(e,d){
+
+// ══ DRAG / RESIZE / ROTATE ══
+function getEvXY(e){ return e.touches&&e.touches.length ? {x:e.touches[0].clientX,y:e.touches[0].clientY} : {x:e.clientX,y:e.clientY}; }
+function cvScale(){ const m=(document.getElementById('cv').style.transform||'').match(/scale\(([\d.]+)\)/); return m?parseFloat(m[1]):1; }
+
+function startDrag(e, d, div){
+  pushHistory();
+  const sc = cvScale();
+  const {x:sx, y:sy} = getEvXY(e);
+  const ox = d.x, oy = d.y;
+  const mv = ev => {
+    const {x,y} = getEvXY(ev);
+    d.x = ox + (x - sx) / sc;
+    d.y = oy + (y - sy) / sc;
+    div.style.left = d.x + 'px';
+    div.style.top  = d.y + 'px';
+  };
+  const up = () => {
+    removeEventListener('mousemove', mv);
+    removeEventListener('mouseup', up);
+    autoSave();
+  };
+  addEventListener('mousemove', mv);
+  addEventListener('mouseup', up);
+}
+function startDragTouch(e,d,div){
   pushHistory();
   const sc=cvScale(); const {x:sx,y:sy}=getEvXY(e); const ox=d.x,oy=d.y;
-  const mv=ev=>{ ev.preventDefault(); const {x,y}=getEvXY(ev); d.x=ox+(x-sx)/sc; d.y=oy+(y-sy)/sc; const el=document.querySelector(`[data-id="${d.id}"]`); if(el){el.style.left=d.x+'px';el.style.top=d.y+'px';} };
+  const mv=ev=>{ ev.preventDefault(); const {x,y}=getEvXY(ev); d.x=ox+(x-sx)/sc; d.y=oy+(y-sy)/sc; div.style.left=d.x+'px'; div.style.top=d.y+'px'; };
   const up=()=>{ removeEventListener('touchmove',mv); removeEventListener('touchend',up); autoSave(); };
   addEventListener('touchmove',mv,{passive:false}); addEventListener('touchend',up);
 }
@@ -1384,7 +1467,12 @@ function renderStrip(){
 
 // ══ TAB ══
 const TAB_TITLES = { bg:'Фон', text:'Текст', photo:'Фото', el:'Элементы', props:'Свойства' };
+let _curTab = 'bg';
 function tab(name, btn) {
+  const isMob = window.innerWidth <= 600;
+  const cp = document.querySelector('.content-panel');
+  const alreadyOpen = isMob && cp && cp.classList.contains('mob-open') && _curTab === name;
+
   document.querySelectorAll('.ic-btn').forEach(t => t.classList.remove('on'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
   if (btn) btn.classList.add('on');
@@ -1392,6 +1480,12 @@ function tab(name, btn) {
   document.getElementById('p-'+name)?.classList.add('on');
   const titleEl = document.getElementById('cpanelTitle');
   if (titleEl) titleEl.textContent = TAB_TITLES[name] || name;
+  _curTab = name;
+
+  if (isMob && cp) {
+    if (alreadyOpen) { cp.classList.remove('mob-open'); }
+    else { cp.classList.add('mob-open'); }
+  }
 }
 
 // ══ EXPORT ══

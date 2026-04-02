@@ -1173,7 +1173,17 @@ function mkElDiv(d){
     t.contentEditable='true'; t.textContent=d.text;
     Object.assign(t.style, d.styles); t.style.width='100%'; t.style.height='100%'; t.style.overflow='hidden';
     t.addEventListener('input',()=>d.text=t.textContent);
-    t.addEventListener('mousedown',e=>e.stopPropagation());
+    // Desktop: если элемент уже выделен — редактируем, иначе — перетаскиваем
+    t.addEventListener('mousedown',e=>{
+      if(S.selId===d.id){ e.stopPropagation(); } // уже выделен → курсор в тексте
+      // иначе пропускаем вверх → div.mousedown → select+drag
+    });
+    // Mobile: первый тап — выбрать+тянуть; второй тап — редактировать
+    t.addEventListener('touchstart',e=>{
+      if(S.selId===d.id){ e.stopPropagation(); setTimeout(()=>t.focus(),0); }
+      // иначе пропускаем вверх → div.touchstart → select+drag
+    },{passive:false});
+    t.addEventListener('touchend',e=>{ if(S.selId===d.id) e.stopPropagation(); },{passive:false});
     div.appendChild(t);
 
   } else if(d.type==='image'){
@@ -1196,7 +1206,9 @@ function mkElDiv(d){
     txt.className='text-el'; txt.contentEditable='true'; txt.textContent=d.text;
     txt.style.cssText=`font-family:${d.fontFamily||'Comfortaa'};font-size:${d.fontSize||'15px'};color:${d.textColor||'#fff'};flex:1;outline:none;`;
     txt.addEventListener('input',()=>d.text=txt.textContent);
-    txt.addEventListener('mousedown',e=>e.stopPropagation());
+    txt.addEventListener('mousedown',e=>{ if(S.selId===d.id) e.stopPropagation(); });
+    txt.addEventListener('touchstart',e=>{ if(S.selId===d.id){ e.stopPropagation(); setTimeout(()=>txt.focus(),0); } },{passive:false});
+    txt.addEventListener('touchend',e=>{ if(S.selId===d.id) e.stopPropagation(); },{passive:false});
     wrap.appendChild(circ); wrap.appendChild(txt); div.appendChild(wrap);
 
   } else if(d.type==='badge'){

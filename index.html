@@ -579,6 +579,15 @@
 
       <!-- ═══ BG ═══ -->
       <div class="panel on" id="p-bg">
+        <div class="sec">Формат слайда</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;" id="fmtPanelBar">
+          <button type="button" class="fmt-btn on" onclick="setFormat('post45')" id="pfmt-post45">4:5<small>Пост</small></button>
+          <button type="button" class="fmt-btn" onclick="setFormat('post34')" id="pfmt-post34">3:4<small>Пост</small></button>
+          <button type="button" class="fmt-btn" onclick="setFormat('square')" id="pfmt-square">1:1<small>Квадрат</small></button>
+          <button type="button" class="fmt-btn" onclick="setFormat('story')" id="pfmt-story">9:16<small>Сторис</small></button>
+          <button type="button" class="fmt-btn" onclick="setFormat('tgpost')" id="pfmt-tgpost">TG<small>Пост</small></button>
+          <button type="button" class="fmt-btn" onclick="setFormat('tgwide')" id="pfmt-tgwide">TG<small>Широкий</small></button>
+        </div>
         <div class="sec">Цвет фона</div>
         <div class="palette" id="bgPalette"></div>
         <div class="row">
@@ -840,8 +849,8 @@ function setFormat(key){
   cv.style.width  = W + 'px';
   cv.style.height = H + 'px';
   document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('on'));
-  const btn = document.getElementById('fmt-'+key);
-  if(btn) btn.classList.add('on');
+  document.getElementById('fmt-'+key)?.classList.add('on');
+  document.getElementById('pfmt-'+key)?.classList.add('on');
   renderAll();
   scaleCanvas();
 }

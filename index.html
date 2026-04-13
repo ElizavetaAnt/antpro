@@ -291,6 +291,38 @@
       flex-shrink:0; transition:width .2s, height .2s;
     }
 
+    /* ── GRID & GUIDES ── */
+    .cv-grid {
+      position:absolute; inset:0; pointer-events:none; z-index:1000;
+      background-image:
+        linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px);
+      background-size:36px 36px;
+    }
+    .cv-grid.thirds {
+      background-image:
+        linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px),
+        linear-gradient(rgba(90,191,124,.25) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(90,191,124,.25) 1px, transparent 1px);
+      background-size:36px 36px, 36px 36px, 33.333% 33.333%, 33.333% 33.333%;
+    }
+    .cv-center-h, .cv-center-v {
+      position:absolute; pointer-events:none; z-index:1001;
+      background:rgba(90,191,124,.35);
+    }
+    .cv-center-h { left:0; right:0; height:1px; top:50%; }
+    .cv-center-v { top:0; bottom:0; width:1px; left:50%; }
+    .guide-line {
+      position:absolute; pointer-events:none; z-index:1002;
+      background:#f5a623; opacity:.85;
+    }
+    .guide-h { left:0; right:0; height:1px; }
+    .guide-v { top:0; bottom:0; width:1px; }
+    .btn-grid { background:var(--card); border:1px solid var(--brd); border-radius:8px; padding:5px 10px; color:var(--mut); cursor:pointer; font-size:11px; font-weight:700; font-family:inherit; transition:all .15s; display:flex; align-items:center; gap:5px; }
+    .btn-grid:hover { background:var(--brd); color:var(--txt); }
+    .btn-grid.on { background:rgba(90,191,124,.15); border-color:var(--accent); color:var(--accent); }
+
     /* ── BG REMOVAL ── */
     .rmbg-box { background:var(--card); border:1px solid var(--brd); border-radius:10px; padding:12px; margin-bottom:8px; }
     .rmbg-progress { height:4px; background:var(--brd); border-radius:2px; margin:8px 0 5px; overflow:hidden; display:none; }
@@ -442,6 +474,15 @@
   <button type="button" class="btn btn-g" onclick="duplicateSlide()">⧉ Дублировать</button>
   <button type="button" class="btn btn-g" onclick="exportCurrent()">↓ PNG</button>
   <button type="button" class="btn btn-a" onclick="exportAll()">↓ ZIP все слайды</button>
+  <button type="button" class="btn-grid" id="btnGrid" onclick="toggleGrid()" title="Сетка">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M0 5h14M0 9h14M5 0v14M9 0v14"/></svg>Сетка
+  </button>
+  <button type="button" class="btn-grid" id="btnThirds" onclick="toggleThirds()" title="Правило третей">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M0 4.7h14M0 9.3h14M4.7 0v14M9.3 0v14"/></svg>Трети
+  </button>
+  <button type="button" class="btn-grid" id="btnCenter" onclick="toggleCenter()" title="Центральные оси">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 0v14M0 7h14"/></svg>Центр
+  </button>
   <button type="button" class="btn btn-g" title="Сохранить" onclick="saveProject()">💾</button>
   <button type="button" class="btn btn-g" title="Загрузить" onclick="loadProject()">📂</button>
 </header>
